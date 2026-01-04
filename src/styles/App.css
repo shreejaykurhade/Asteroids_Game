@@ -1404,8 +1404,63 @@ footer {
         height: 18px;
     }
 
+
     .nav-logout-btn {
         padding: 4px 10px;
         font-size: 0.65rem;
     }
+}
+
+
+/* Google Auth Retro Button */
+.google-auth-retro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+    width: 100%;
+}
+
+.google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: white;
+    color: black;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-family: 'Space Mono', monospace;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    width: 294px;
+    /* Matches input width (250+padding+border) */
+    margin-bottom: 8px;
+    border: 1px solid transparent;
+}
+
+.google-btn:hover {
+    background: #e0e0e0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+.google-btn:active {
+    transform: translateY(1px);
+}
+
+.g-icon {
+    font-size: 1.2rem;
+    font-weight: 900;
+}
+
+.auth-note {
+    font-size: 0.7rem;
+    color: #666;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }

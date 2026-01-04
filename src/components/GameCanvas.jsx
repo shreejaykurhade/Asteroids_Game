@@ -3,6 +3,7 @@ import * as Constants from '../utils/constants';
 import { Music, Sound } from '../utils/audio';
 import { saveToLeaderboard } from '../utils/leaderboard';
 import { SHIP_DESIGNS } from '../utils/shipDesigns';
+import { ENEMY_DESIGNS } from '../utils/enemyDesigns';
 
 const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, shipType }) => {
     const canvasRef = useRef(null);
@@ -43,15 +44,43 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Game Loop
     useEffect(() => {
+        let animationFrameId;
+        let lastTime = performance.now();
+        let accumulator = 0;
+        const CONSTANT_DT = 1000 / Constants.FPS;
+
+        const loop = (currentTime) => {
+            if (!gameStarted) return;
+
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            accumulator += deltaTime;
+
+            // Update physics in fixed steps to ensure consistency
+            // Cap accumulator to prevent spiral of death on lag spikes
+            if (accumulator > 1000) accumulator = 1000;
+
+            while (accumulator >= CONSTANT_DT) {
+                update();
+                accumulator -= CONSTANT_DT;
+            }
+
+            animationFrameId = requestAnimationFrame(loop);
+        };
+
         if (gameStarted) {
             startNewGame();
-            gameRef.current.gameLoop = setInterval(update, 1000 / Constants.FPS);
+            lastTime = performance.now();
+            animationFrameId = requestAnimationFrame(loop);
         } else {
-            clearInterval(gameRef.current.gameLoop);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
         }
 
-        return () => clearInterval(gameRef.current.gameLoop);
+        return () => {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        };
     }, [gameStarted]);
 
     // Handle Input
@@ -119,8 +148,8 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         game.text = "Level " + (game.level + 1);
         game.textAlpha = 1.0;
         createAsteroidBelt();
-        // Start spawning enemies from Level 10 onwards as requested
-        if (game.level >= 9) {
+        // Start spawning enemies from Level 1 onwards as requested
+        if (game.level >= 0) {
             spawnEnemies();
         }
     };
@@ -171,10 +200,11 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
 
         // Calculate asteroid count based on level
         let numAsteroids;
-        if (game.level < 5) numAsteroids = Math.floor(Math.random() * 3) + 2; // 2-4
-        else if (game.level < 10) numAsteroids = Math.floor(Math.random() * 3) + 3; // 3-5
+        if (game.level === 0) numAsteroids = 1;
+        else if (game.level < 5) numAsteroids = Math.floor(Math.random() * 3) + 2; // Increased slightly for lvl 2-4
+        else if (game.level < 10) numAsteroids = Math.floor(Math.random() * 3) + 2; // 3-5
         else if (game.level < 15) numAsteroids = Math.floor(Math.random() * 5) + 3; // 3-7
-        else if (game.level < 20) numAsteroids = Math.floor(Math.random() * 3) + 5; // 5-7
+        else if (game.level < 20) numAsteroids = Math.floor(Math.random() * 3) + 4; // 5-7
         else numAsteroids = Math.floor(Math.random() * 4) + 7; // 7-10
 
         game.roidsTotal = numAsteroids * 7;
@@ -194,19 +224,21 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         const game = gameRef.current;
         game.enemies = [];
 
-        // Gating rules: 
-        // Hexagons: Level 10+ (game.level 9+)
-        // Squares: Level 15+ (game.level 14+)
-        // Elite Squares: Level 17+ (game.level 16+)
+
 
         const types = [];
-        if (game.level >= 9) types.push('HEXAGON');
-        if (game.level >= 14) types.push('SQUARE');
-        if (game.level >= 16) types.push('ELITE');
+        if (game.level >= 1) types.push('TRIANGLE');
+        if (game.level >= 3) types.push('SQUARE');
+        if (game.level >= 5) types.push('HEXAGON');
+        if (game.level >= 7) types.push('OCTAGON');
+        if (game.level >= 9) types.push('ELITE');
 
         if (types.length === 0) return;
 
-        const numEnemies = Math.min(1 + Math.floor((game.level - 8) / 3), 5);
+        // Progressive count: 1 enemy at lvl 1, then scales slowly
+        let numEnemies = 1 + Math.floor((game.level - 1) / 2);
+        if (numEnemies > 6) numEnemies = 6; // Cap at 6
+
         for (let i = 0; i < numEnemies; i++) {
             let x, y;
             do {
@@ -219,22 +251,26 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         }
     };
 
+
+
     const newEnemy = (x, y, type) => {
         const game = gameRef.current;
+        const design = ENEMY_DESIGNS[type];
         const lvlMult = 1 + 0.1 * game.level;
         const scale = getScale();
         const baseSize = Constants.SHIP_SIZE * scale;
 
         return {
             x, y,
-            type: type === 'ELITE' ? 'SQUARE' : type,
-            isElite: type === 'ELITE',
-            r: type === 'HEXAGON' ? baseSize * 1.5 : baseSize * 0.9,
-            xv: (Math.random() * 2 - 1) * Constants.ROID_SPD * 0.5 * lvlMult / Constants.FPS,
-            yv: (Math.random() * 2 - 1) * Constants.ROID_SPD * 0.5 * lvlMult / Constants.FPS,
-            health: type === 'HEXAGON' ? 5 : (type === 'ELITE' ? 3 : 1),
-            maxHealth: type === 'HEXAGON' ? 5 : (type === 'ELITE' ? 3 : 1),
-            shootTime: type !== 'HEXAGON' ? Math.floor(Math.random() * 150) + 100 : 0,
+            type: type,
+            isElite: type === 'ELITE', // Keep for laser color logic if needed, or move to design
+            r: baseSize * design.radiusMult,
+            xv: (Math.random() * 2 - 1) * Constants.ROID_SPD * 0.5 * design.speedMult * lvlMult / Constants.FPS,
+            yv: (Math.random() * 2 - 1) * Constants.ROID_SPD * 0.5 * design.speedMult * lvlMult / Constants.FPS,
+            health: design.health,
+            maxHealth: design.health,
+            shootChance: design.shootChance,
+            shootTime: design.shootChance > 0 ? Math.floor(Math.random() * 150) + 100 : 0,
             a: Math.random() * Math.PI * 2
         };
     };
@@ -398,16 +434,18 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         }
     };
 
-    const createExplosion = (x, y, color = "white", count = 10) => {
+    const createExplosion = (x, y, color = "white", count = 8) => { // Reduced from 10/20 default
         const game = gameRef.current;
+        if (game.explosions.length > 40) return; // Hard cap on particles for performance
+
         for (let i = 0; i < count; i++) {
             game.explosions.push({
                 x: x,
                 y: y,
-                xv: (Math.random() - 0.5) * (Math.random() * 10),
-                yv: (Math.random() - 0.5) * (Math.random() * 10),
+                xv: (Math.random() - 0.5) * 5, // Simplified math
+                yv: (Math.random() - 0.5) * 5,
                 age: 0,
-                life: Math.random() * 20 + 10, // Frames
+                life: Math.random() * 10 + 10,
                 color: color
             });
         }
@@ -417,8 +455,8 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         const game = gameRef.current;
         game.ship.explodeTime = Math.ceil(Constants.SHIP_EXPLODE_DUR * Constants.FPS);
         game.sounds.explode.play(!isMuted, gameStarted);
-        createExplosion(game.ship.x, game.ship.y, "red", 30);
-        createExplosion(game.ship.x, game.ship.y, "white", 20);
+        createExplosion(game.ship.x, game.ship.y, "red", 15); // Reduced from 30
+        createExplosion(game.ship.x, game.ship.y, "white", 10); // Reduced from 20
     };
 
     const handleGameOverState = () => {
@@ -484,33 +522,24 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         }
 
         // Draw Enemies
+        // Draw Enemies
         for (let i = 0; i < game.enemies.length; i++) {
             const enemy = game.enemies[i];
-            const x = enemy.x, y = enemy.y, r = enemy.r, type = enemy.type;
+            const design = ENEMY_DESIGNS[enemy.type] || ENEMY_DESIGNS.SQUARE; // Fallback
 
-            ctx.lineWidth = Constants.SHIP_SIZE / 20;
-            if (type === 'SQUARE') {
-                ctx.strokeStyle = enemy.isElite ? "#a855f7" : "red"; // Purple for Elite
-                ctx.strokeRect(x - r, y - r, r * 2, r * 2);
-            } else {
-                ctx.strokeStyle = "lime";
-                ctx.beginPath();
-                for (let j = 0; j < 6; j++) {
-                    const ang = j * Math.PI / 3;
-                    ctx.lineTo(x + r * Math.cos(ang), y + r * Math.sin(ang));
-                }
-                ctx.closePath();
-                ctx.stroke();
-            }
+            design.draw(ctx, enemy.x, enemy.y, enemy.r, enemy.a);
 
-            // Health Bar for Hexagons and Elite Squares
+            // Health Bar
             if (enemy.maxHealth > 1) {
-                const barW = r * 2;
+                const barW = enemy.r * 2;
                 const barH = 5;
                 ctx.fillStyle = "rgba(128, 128, 128, 0.5)";
-                ctx.fillRect(x - r, y - r - 15, barW, barH);
-                ctx.fillStyle = type === 'HEXAGON' ? "lime" : "#a855f7";
-                ctx.fillRect(x - r, y - r - 15, barW * (enemy.health / enemy.maxHealth), barH);
+                ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 15, barW, barH);
+
+                // Color based on type or generic
+                ctx.fillStyle = enemy.type === 'HEXAGON' ? "lime" : (enemy.type === 'ELITE' ? "#a855f7" : (enemy.type === 'OCTAGON' ? "cyan" : "red"));
+
+                ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r - 15, barW * (enemy.health / enemy.maxHealth), barH);
             }
         }
 
@@ -526,12 +555,12 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
                 continue;
             }
 
-            // Enhanced Enemy Laser
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = l.isElite ? "#a855f7" : "red";
-            ctx.fillStyle = "white";
+            // Enhanced Enemy Laser - Optimized: No Shadow
+            // ctx.shadowBlur = 10; // Disabled for performance
+            // ctx.shadowColor = l.isElite ? "#a855f7" : "red";
+            ctx.fillStyle = l.isElite ? "#d8b4fe" : "#ffaaaa"; // Brighter core color to compensate
             ctx.beginPath(); ctx.arc(l.x, l.y, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.shadowBlur = 0;
+            // ctx.shadowBlur = 0;
 
             // Collision with ship
             if (!exploding && ship.blinkNum === 0 && !ship.dead && Constants.distBetweenPoints(ship.x, ship.y, l.x, l.y) < ship.r) {
@@ -582,13 +611,15 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
             if (enemy.x < -enemy.r) enemy.x = canv.width + enemy.r; else if (enemy.x > canv.width + enemy.r) enemy.x = -enemy.r;
             if (enemy.y < -enemy.r) enemy.y = canv.height + enemy.r; else if (enemy.y > canv.height + enemy.r) enemy.y = -enemy.r;
 
-            if (enemy.type === 'SQUARE') {
+            // General Shooting Logic
+            if (enemy.shootChance > 0) {
                 enemy.shootTime--;
                 // Wraith Stealth Logic: Enemies don't target if stealth is active
                 const isWraithStealth = ship.type === 'WRAITH' && ship.abilityActive;
 
                 if (enemy.shootTime <= 0 && !isWraithStealth) {
-                    // Aim at player: Elite is more precise (lower error)
+                    // Aim at player
+                    // Elite is more precise (lower error)
                     const error = enemy.isElite ? 0.15 : 0.4;
                     const ang = Math.atan2(ship.y - enemy.y, ship.x - enemy.x) + (Math.random() * error - error / 2);
                     game.enemyLasers.push({

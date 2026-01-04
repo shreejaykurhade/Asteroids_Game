@@ -1,5 +1,5 @@
 // Game Constants
-export const FPS = 30;
+export const FPS = 60;
 export const FRICTION = 0.7;
 export const GAME_LIVES = 3;
 export const LASER_DIST = 0.6;

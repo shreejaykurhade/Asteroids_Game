@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 
-const Home = ({ onStart, leaderboard, isVerified, playerName }) => {
+const Home = ({ onStart, leaderboard, isVerified, playerName, onVerified }) => {
     const [inputValue, setInputValue] = useState(playerName);
     const [errorVisible, setErrorVisible] = useState(false);
     const navigate = useNavigate();
@@ -71,13 +71,19 @@ const Home = ({ onStart, leaderboard, isVerified, playerName }) => {
                         </>
                     )}
                 </div>
+                {!isVerified && (
+                    <div className="google-auth-retro">
+                        <button
+                            className="google-btn"
+                            onClick={onVerified} // Triggers Firebase Auth passed from App
+                        >
+                            <span className="g-icon">G</span>
+                            SIGN IN WITH GOOGLE
+                        </button>
+                        <div className="auth-note">SECURE LOGIN VIA FIREBASE</div>
+                    </div>
+                )}
             </div>
-
-            {!isVerified && (
-                <div className="google-auth-retro">
-                    <div id="g_id_signin"></div>
-                </div>
-            )}
         </div>
     );
 };

@@ -8,6 +8,8 @@ import PilotGuidePage from './pages/PilotGuidePage';
 import GameCanvas from './components/GameCanvas';
 import MobileControls from './components/MobileControls';
 import { getLeaderboard, saveToLeaderboard } from './utils/leaderboard';
+import { loginWithGoogle, logoutUser, saveScoreToFirebase, trackSessionTime, auth } from './utils/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import confetti from 'canvas-confetti';
 import './styles/App.css';
 
@@ -31,48 +33,42 @@ const AppContent = () => {
     }, []);
 
     useEffect(() => {
-        // Initialize Google Sign-In
-        const initGoogle = () => {
-            if (!window.google) {
-                setTimeout(initGoogle, 100);
-                return;
+        // Firebase Auth Listener
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                setPlayerName(user.displayName.toUpperCase());
+                setIsVerified(true);
+                localStorage.setItem('ASTER_PLAYER_NAME', user.displayName.toUpperCase());
+                localStorage.setItem('ASTER_VERIFIED', 'true');
+            } else {
+                // Handle logout state if needed
             }
+        });
 
-            if (window._gsi_initialized) return;
-            window._gsi_initialized = true;
-
-            const { CONFIG } = import.meta.glob('./utils/config.js', { eager: true })['./utils/config.js'];
-            const clientId = CONFIG.GOOGLE_CLIENT_ID;
-
-            window.google.accounts.id.initialize({
-                client_id: clientId,
-                callback: (response) => {
-                    const payload = JSON.parse(atob(response.credential.split('.')[1]));
-                    const name = payload.name.toUpperCase();
-                    setPlayerName(name);
-                    setIsVerified(true);
-                    localStorage.setItem('ASTER_PLAYER_NAME', name);
-                    localStorage.setItem('ASTER_VERIFIED', 'true');
-                    window.location.reload();
-                }
-            });
-
-            const target = document.getElementById("g_id_signin");
-            if (target) {
-                window.google.accounts.id.renderButton(target, {
-                    theme: "outline",
-                    size: "large",
-                    shape: "rectangular",
-                    text: "signin_with",
-                    logo_alignment: "left"
-                });
+        // Session Tracking
+        const startTime = Date.now();
+        const handleUnload = () => {
+            if (auth.currentUser) {
+                const duration = Date.now() - startTime;
+                trackSessionTime(auth.currentUser.uid, duration);
             }
         };
+        window.addEventListener('beforeunload', handleUnload);
 
-        if (!gameStarted) {
-            initGoogle();
+        return () => {
+            unsubscribe();
+            handleUnload(); // Save session on component unmount
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, []);
+
+    const triggerLogin = async () => {
+        try {
+            await loginWithGoogle();
+        } catch (e) {
+            console.error(e);
         }
-    }, [gameStarted]);
+    };
 
     const handleStartGame = (name) => {
         setPlayerName(name.toUpperCase());
@@ -81,6 +77,12 @@ const AppContent = () => {
     };
 
     const handleGameOver = (finalScore) => {
+        // Firebase Save
+        if (auth.currentUser) {
+            saveScoreToFirebase(auth.currentUser, finalScore, isVerified);
+        }
+
+        // Local fallback & Notification logic
         const { leaderboard: newList, isNewPB } = saveToLeaderboard(playerName, finalScore, isVerified);
         setLeaderboard(newList);
 
@@ -103,6 +105,7 @@ const AppContent = () => {
     };
 
     const handleLogout = () => {
+        logoutUser();
         localStorage.removeItem('ASTER_PLAYER_NAME');
         localStorage.setItem('ASTER_VERIFIED', 'false');
         localStorage.removeItem('ASTER_PLAYER_PB');
@@ -138,12 +141,7 @@ const AppContent = () => {
                             leaderboard={leaderboard.slice(0, 5)}
                             isVerified={isVerified}
                             playerName={playerName}
-                            onVerified={(name) => {
-                                setPlayerName(name);
-                                setIsVerified(true);
-                                localStorage.setItem('ASTER_PLAYER_NAME', name);
-                                localStorage.setItem('ASTER_VERIFIED', 'true');
-                            }}
+                            onVerified={triggerLogin}
                             onLogout={handleLogout}
                         />
                     ) : null
