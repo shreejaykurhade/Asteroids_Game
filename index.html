@@ -1,64 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Asteroids - Production Edition</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>Asteroids - React Edition</title>
+    <!-- Google Sign-In Library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
-    <div id="ui-overlay">
-        <!-- Top Right Actions -->
-        <div class="top-actions">
-            <div id="mute-btn" title="Toggle Sound">🔊</div>
-            <div id="leaderboard-toggle" title="Top 50 Rankings">🏆</div>
-        </div>
-
-        <div class="main-container">
-            <!-- Game Menu Box -->
-            <div class="retro-container menu-box">
-                <h1>ASTEROIDS</h1>
-                <input type="text" id="username" placeholder="ENTER NAME" maxlength="10">
-                <br>
-                <button id="start-btn" tabindex="-1">START MISSION</button>
-
-                <!-- Top 5 Mini Leaderboard -->
-                <div id="mini-leaderboard">
-                    <h3>TOP 5 SPACERS</h3>
-                    <div id="mini-leaderboard-list"></div>
-                </div>
-
-                <footer>MADE WITH ❤️ BY SHREEJAY</footer>
-            </div>
-
-        </div>
-
-        <!-- Full Leaderboard Overlay -->
-        <div class="retro-container leaderboard-box">
-            <div id="close-leaderboard">✕</div>
-            <h2>TOP 50 COMMANDERS</h2>
-            <div id="leaderboard-list">
-                <!-- Leaderboard entries will be injected here -->
-            </div>
-        </div>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="mobile-controls">
-        <div class="control-group">
-            <div class="btn-ctrl" id="btn-left">←</div>
-            <div class="btn-ctrl" id="btn-right">→</div>
-        </div>
-        <div class="control-group">
-            <div class="btn-ctrl" id="btn-thrust">↑</div>
-            <div class="btn-ctrl" id="btn-shoot">⚡</div>
-        </div>
-    </div>
-
-    <script src="scripts/game.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
 </body>
 
 </html>
