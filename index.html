@@ -5,7 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Asteroids - React Edition</title>
-    <!-- Google Sign-In Library -->
+    <!-- Content Security Policy for Firebase -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.googletagmanager.com;
+        connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com;
+        frame-src 'self' https://*.firebaseapp.com https://*.google.com;
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: https://*.googleusercontent.com;
+    ">
+    <!-- Google Sign-In Library (Optional now, but kept for legacy ref) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
