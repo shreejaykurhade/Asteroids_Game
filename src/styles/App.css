@@ -443,6 +443,8 @@ button:hover {
     display: flex;
     flex-direction: column;
     position: relative;
+    margin-top: 80px;
+    /* Clear the navbar */
 }
 
 .page-container {
@@ -453,7 +455,9 @@ button:hover {
     height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    /* Align to top so margin-top works */
+    padding-top: 20px;
     background: rgba(0, 0, 0, 0.95);
     z-index: 150;
     pointer-events: auto;
@@ -497,6 +501,7 @@ button:hover {
 #leaderboard-list {
     flex-grow: 1;
     overflow-y: auto;
+    /* Internal scroll only */
     padding-right: 10px;
     padding-top: 45px;
     /* Added room for top tooltips */
@@ -1008,17 +1013,20 @@ footer {
     opacity: 0.8;
     line-height: 1.5;
     margin-bottom: 20px;
-    height: 45px;
-    /* Fixed height for description */
-    overflow: hidden;
+    flex-grow: 1;
+    /* Allow it to take available space */
+    overflow-y: visible;
+    height: auto;
+    /* Remove cap to ensure visibility */
 }
 
 .hangar-stats-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 12px;
-    margin-bottom: auto;
-    /* Push button to bottom */
+    margin-top: auto;
+    /* Push to bottom of its container space */
+    margin-bottom: 20px;
 }
 
 .hangar-stat-item {
@@ -1075,19 +1083,25 @@ footer {
 .confirm-ship-btn {
     margin-top: 20px;
     width: 100%;
-    padding: 12px;
-    background: #4facfe;
-    border: none;
-    color: white;
+    padding: 10px 15px;
+    /* Reduced padding */
+    background: transparent;
+    /* Ghost style */
+    border: 1px solid #4facfe;
+    color: #4facfe;
+    font-size: 0.9rem;
+    /* Smaller text */
     font-weight: bold;
     letter-spacing: 2px;
     cursor: pointer;
     transition: all 0.2s;
+    text-transform: uppercase;
 }
 
 .confirm-ship-btn:hover {
-    background: #00f2fe;
-    box-shadow: 0 0 15px rgba(79, 172, 254, 0.5);
+    background: rgba(79, 172, 254, 0.1);
+    box-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
+    color: white;
 }
 
 .nav-arrow.lg {
@@ -1178,22 +1192,22 @@ footer {
     }
 
     .hangar-ship-desc {
-        font-size: 0.65rem;
+        font-size: 0.8rem;
         height: auto;
-        min-height: 35px;
-        margin-bottom: 10px;
+        min-height: auto;
+        margin-bottom: 5px;
         line-height: 1.3;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-        /* Added for standard compatibility */
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+        display: block;
+        /* Remove truncation */
+        overflow: visible;
+        flex-grow: 0;
+        white-space: normal;
+        text-align: center;
     }
 
     .hangar-stats-grid {
-        gap: 5px;
-        margin-bottom: 5px;
+        gap: 6px;
+        margin-bottom: 10px;
     }
 
     .hangar-stat-item {
@@ -1201,12 +1215,14 @@ footer {
     }
 
     .stat-label {
-        font-size: 0.55rem;
-        justify-content: center;
+        font-size: 0.6rem;
+        justify-content: flex-start;
+        /* Align left for cleaner look */
     }
 
     .hangar-stat-bar {
-        height: 3px;
+        height: 6px;
+        /* Thicker bars for visibility on mobile */
     }
 
     .hangar-special-ability {
@@ -1215,33 +1231,33 @@ footer {
     }
 
     .ability-title {
-        font-size: 0.55rem;
+        font-size: 0.6rem;
     }
 
     .ability-name {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
     }
 
     .nav-arrow.lg {
-        padding: 5px;
+        padding: 10px;
+        /* Easier to tap */
     }
 
     .nav-arrow.lg svg {
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
     }
 
     .back-btn-corner {
-        padding: 3px 8px;
-        font-size: 0.5rem;
-        top: 10px;
-        left: 10px;
+        padding: 6px 12px;
+        font-size: 0.65rem;
     }
 
     .confirm-ship-btn {
-        padding: 8px;
-        font-size: 0.75rem;
-        margin-top: 10px;
+        padding: 12px;
+        /* Easier to tap */
+        font-size: 0.9rem;
+        margin-top: 5px;
     }
 }
 

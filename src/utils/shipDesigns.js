@@ -30,15 +30,19 @@ export const SHIP_DESIGNS = {
         stats: { accel: 0.8, turn: 0.7, fireRate: 1.5, speed: 0.9, laserSize: 1.5 },
         ability: { name: "Gravity Wave", cd: 8000 },
         draw: (ctx, x, y, a, r) => {
+            // Main Body (Closed Shape)
             ctx.moveTo(x + r * Math.cos(a), y - r * Math.sin(a));
             ctx.lineTo(x + r * Math.cos(a + 1.2), y - r * Math.sin(a + 1.2));
             ctx.lineTo(x - 0.5 * r * Math.cos(a), y + 0.5 * r * Math.sin(a));
             ctx.lineTo(x + r * Math.cos(a - 1.2), y - r * Math.sin(a - 1.2));
-            // Wing details
-            ctx.moveTo(x + r * 0.8 * Math.cos(a + 1), y - r * 0.8 * Math.sin(a + 1));
-            ctx.lineTo(x - r * 0.5 * Math.cos(a), y + r * 0.5 * Math.sin(a));
-            ctx.moveTo(x + r * 0.8 * Math.cos(a - 1), y - r * 0.8 * Math.sin(a - 1));
-            ctx.lineTo(x - r * 0.5 * Math.cos(a), y + r * 0.5 * Math.sin(a));
+            ctx.lineTo(x + r * Math.cos(a), y - r * Math.sin(a)); // Close loop to nose
+
+            // Internal Wing Detail (connected)
+            ctx.moveTo(x - 0.2 * r * Math.cos(a), y + 0.2 * r * Math.sin(a));
+            ctx.lineTo(x + r * 0.8 * Math.cos(a + 1), y - r * 0.8 * Math.sin(a + 1));
+
+            ctx.moveTo(x - 0.2 * r * Math.cos(a), y + 0.2 * r * Math.sin(a));
+            ctx.lineTo(x + r * 0.8 * Math.cos(a - 1), y - r * 0.8 * Math.sin(a - 1));
         }
     },
     PHALANX: {

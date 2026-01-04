@@ -332,13 +332,10 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
                 ship.abilityTimer = Math.ceil(2 * Constants.FPS * (isMobile ? 0.75 : 1.0)); // Shorter duration on mobile
                 break;
             case 'SCOUT':
-                // Warp Dash
-                const dashPower = 50 * balancingFactor; // Reduced to ~50px as requested
-                ship.thrust.x += Math.cos(ship.a) * dashPower / 10; // Convert to velocity impulse, not position warp for smoothness? 
-                // User said "go only like 50 px up". Warp implies position change.
-                // Let's do position change but safely.
-                ship.x += Math.cos(ship.a) * dashPower;
-                ship.y -= Math.sin(ship.a) * dashPower;
+                // Sudden Acceleration (Boost)
+                const boostPower = 5 * balancingFactor; // Reduced impulse force
+                ship.thrust.x += Math.cos(ship.a) * boostPower;
+                ship.thrust.y -= Math.sin(ship.a) * boostPower;
 
                 ship.abilityActive = true;
                 ship.abilityTimer = 10;
@@ -529,8 +526,12 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
                 continue;
             }
 
-            ctx.fillStyle = l.isElite ? "#a855f7" : "red";
+            // Enhanced Enemy Laser
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = l.isElite ? "#a855f7" : "red";
+            ctx.fillStyle = "white";
             ctx.beginPath(); ctx.arc(l.x, l.y, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
 
             // Collision with ship
             if (!exploding && ship.blinkNum === 0 && !ship.dead && Constants.distBetweenPoints(ship.x, ship.y, l.x, l.y) < ship.r) {
@@ -685,44 +686,41 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
                 }
             }
 
-            // Laser collision with asteroids
+            // Handle Player Lasers (Movement, Drawing, Collisions)
             for (let i = ship.lasers.length - 1; i >= 0; i--) {
                 const l = ship.lasers[i];
                 l.x += l.xv;
                 l.y += l.yv;
                 l.dist += Math.sqrt(l.xv * l.xv + l.yv * l.yv);
 
+                // Check distance limit
                 if (l.dist > Constants.LASER_DIST * canv.width) {
                     ship.lasers.splice(i, 1);
                     continue;
                 }
 
-                // Draw lasers
-                // Draw lasers
-                ctx.fillStyle = "red"; // Changed to Red
+                // Draw Laser (Plasma Bolt Style)
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = "#ff0000"; // Neon Red Glow
+                ctx.fillStyle = "#ffffff"; // White Hot Core
                 ctx.beginPath();
                 ctx.arc(l.x, l.y, l.r || Constants.LASER_SIZE, 0, Math.PI * 2);
                 ctx.fill();
-
-                // Laser glow
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = "red";
-                ctx.fill();
                 ctx.shadowBlur = 0;
 
-                // Laser hitting asteroid
+                // Collision: Asteroids
+                let hit = false;
                 for (let j = game.roids.length - 1; j >= 0; j--) {
                     if (Constants.distBetweenPoints(l.x, l.y, game.roids[j].x, game.roids[j].y) < game.roids[j].r) {
                         destroyAsteroid(j);
                         ship.lasers.splice(i, 1);
+                        hit = true;
                         break;
                     }
                 }
-            }
+                if (hit) continue;
 
-            // Laser collision with enemies
-            for (let i = ship.lasers.length - 1; i >= 0; i--) {
-                const l = ship.lasers[i];
+                // Collision: Enemies
                 for (let j = game.enemies.length - 1; j >= 0; j--) {
                     const e = game.enemies[j];
                     if (Constants.distBetweenPoints(l.x, l.y, e.x, e.y) < e.r) {
