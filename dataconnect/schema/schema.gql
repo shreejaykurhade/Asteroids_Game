@@ -1,0 +1,18 @@
+type User @table {
+  email: String
+  username: String!
+  totalTimePlayed: Float # In milliseconds
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  # Stats
+  highestScore: Int
+  gamesPlayed: Int
+}
+
+type LeaderboardEntry @table {
+  user: User!
+  score: Int!
+  level: Int
+  verified: Boolean
+  timestamp: Timestamp! @default(expr: "request.time")
+}

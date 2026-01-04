@@ -1,0 +1,17 @@
+{
+    "rules": {
+        ".read": true,
+        "users": {
+            "$uid": {
+                ".write": "$uid === auth.uid",
+                ".validate": "newData.hasChildren(['email', 'displayName'])"
+            }
+        },
+        "leaderboard": {
+            ".write": "auth != null",
+            ".indexOn": [
+                "score"
+            ]
+        }
+    }
+}
