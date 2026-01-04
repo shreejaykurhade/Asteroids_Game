@@ -25,7 +25,8 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
             laser: new Sound("/sounds/laser.m4a", 5, 0.5),
             thrust: new Sound("/sounds/thrust.m4a"),
             music: new Music("/sounds/music-low.m4a", "/sounds/music-high.m4a")
-        }
+        },
+        explosions: [] // New explosion particles array
     });
 
     useEffect(() => {
@@ -61,7 +62,7 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
                 case 32: // Space
                     shootLaser();
                     break;
-                case 16: // Shift
+                case 90: // Z key for Ability
                     activateAbility();
                     break;
                 case 37: // Left
@@ -143,14 +144,16 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
             rot: 0,
             thrusting: false,
             thrust: { x: 0, y: 0 },
+            type: shipType, // Store type to avoid stale closures
             // Specialized Stats
-            accel: Constants.SHIP_THRUST * stats.accel,
+            accel: Constants.SHIP_THRUST * stats.accel * 0.5, // Reduced acceleration as requested
             turn: (Constants.SHIP_TURN_SPD * stats.turn) / 180 * Math.PI / Constants.FPS,
             fireRate: stats.fireRate,
             fireCooldown: 0,
             laserSize: stats.laserSize || 1.0,
             // Ability State
             ability: design.ability,
+            status: { x: 0, y: 0 },
             abilityCooldown: 0,
             abilityActive: false,
             abilityTimer: 0
@@ -289,9 +292,11 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         const ship = game.ship;
         if (ship.dead || ship.abilityCooldown > 0) return;
 
-        const type = shipType;
+        const isMobile = window.innerWidth < 768;
+        const balancingFactor = isMobile ? 0.6 : 1.0; // Tone down for mobile
 
-        switch (type) {
+        // Use ship.type instead of shipType prop to prevent closure staleness
+        switch (ship.type) {
             case 'INTERCEPTOR':
                 // Triple Burst
                 for (let i = -1; i <= 1; i++) {
@@ -301,7 +306,8 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
                         xv: Constants.LASER_SPD * Math.cos(ship.a + i * 0.2) / Constants.FPS,
                         yv: -Constants.LASER_SPD * Math.sin(ship.a + i * 0.2) / Constants.FPS,
                         dist: 0,
-                        explodeTime: 0
+                        explodeTime: 0,
+                        r: Constants.LASER_SIZE * ship.laserSize
                     });
                 }
                 game.sounds.laser.play(!isMuted, gameStarted);
@@ -310,10 +316,11 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
                 // Gravity Wave: Push asteroids away
                 game.roids.forEach(roid => {
                     const dist = Constants.distBetweenPoints(ship.x, ship.y, roid.x, roid.y);
-                    if (dist < 300) {
+                    const pushDist = 300 * balancingFactor;
+                    if (dist < pushDist) {
                         const angle = Math.atan2(roid.y - ship.y, roid.x - ship.x);
-                        roid.xv += Math.cos(angle) * 10;
-                        roid.yv += Math.sin(angle) * 10;
+                        roid.xv += Math.cos(angle) * 10 * balancingFactor;
+                        roid.yv += Math.sin(angle) * 10 * balancingFactor;
                     }
                 });
                 ship.abilityActive = true;
@@ -322,19 +329,24 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
             case 'PHALANX':
                 // Static Shield
                 ship.abilityActive = true;
-                ship.abilityTimer = Math.ceil(2 * Constants.FPS); // 2s shield
+                ship.abilityTimer = Math.ceil(2 * Constants.FPS * (isMobile ? 0.75 : 1.0)); // Shorter duration on mobile
                 break;
             case 'SCOUT':
                 // Warp Dash
-                ship.thrust.x += Math.cos(ship.a) * 50;
-                ship.thrust.y -= Math.sin(ship.a) * 50;
+                const dashPower = 50 * balancingFactor; // Reduced to ~50px as requested
+                ship.thrust.x += Math.cos(ship.a) * dashPower / 10; // Convert to velocity impulse, not position warp for smoothness? 
+                // User said "go only like 50 px up". Warp implies position change.
+                // Let's do position change but safely.
+                ship.x += Math.cos(ship.a) * dashPower;
+                ship.y -= Math.sin(ship.a) * dashPower;
+
                 ship.abilityActive = true;
                 ship.abilityTimer = 10;
                 break;
             case 'WRAITH':
                 // Stealth
                 ship.abilityActive = true;
-                ship.abilityTimer = Math.ceil(4 * Constants.FPS); // 4s stealth
+                ship.abilityTimer = Math.ceil(4 * Constants.FPS * (isMobile ? 0.75 : 1.0)); // Shorter duration on mobile
                 break;
             default: break;
         }
@@ -364,6 +376,8 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
 
         game.roids.splice(index, 1);
         game.sounds.hit.play(!isMuted, gameStarted);
+        createExplosion(x, y, "grey", 15); // Asteroid dust
+        createExplosion(x, y, "white", 5);
         game.roidsLeft--;
         game.sounds.music.setAsteroidRatio(game.roidsLeft / game.roidsTotal);
 
@@ -377,6 +391,7 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         const game = gameRef.current;
         const enemy = game.enemies[index];
         game.score += enemy.type === 'HEXAGON' ? 500 : 250;
+        createExplosion(enemy.x, enemy.y, enemy.type === 'HEXAGON' ? "lime" : "red", 20);
         game.enemies.splice(index, 1);
         game.sounds.hit.play(!isMuted, gameStarted);
 
@@ -386,13 +401,30 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         }
     };
 
+    const createExplosion = (x, y, color = "white", count = 10) => {
+        const game = gameRef.current;
+        for (let i = 0; i < count; i++) {
+            game.explosions.push({
+                x: x,
+                y: y,
+                xv: (Math.random() - 0.5) * (Math.random() * 10),
+                yv: (Math.random() - 0.5) * (Math.random() * 10),
+                age: 0,
+                life: Math.random() * 20 + 10, // Frames
+                color: color
+            });
+        }
+    };
+
     const explodeShip = () => {
         const game = gameRef.current;
         game.ship.explodeTime = Math.ceil(Constants.SHIP_EXPLODE_DUR * Constants.FPS);
         game.sounds.explode.play(!isMuted, gameStarted);
+        createExplosion(game.ship.x, game.ship.y, "red", 30);
+        createExplosion(game.ship.x, game.ship.y, "white", 20);
     };
 
-    const handleGameOver = () => {
+    const handleGameOverState = () => {
         const game = gameRef.current;
         game.ship.dead = true;
         game.text = "Game Over";
@@ -409,7 +441,11 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         ctx.lineWidth = Constants.SHIP_SIZE / 20;
         ctx.beginPath();
 
-        const design = SHIP_DESIGNS[shipType] || SHIP_DESIGNS.CLASSIC;
+        // Use ship.type if available, otherwise fall back or use prop (for lives display)
+        // For game ship, use ship.type. For lives, use shipType prop or "CLASSIC"
+        const typeToDraw = (gameRef.current.ship && gameRef.current.ship.type) ? gameRef.current.ship.type : shipType;
+        const design = SHIP_DESIGNS[typeToDraw] || SHIP_DESIGNS.CLASSIC;
+
         design.draw(ctx, x, y, a, r);
 
         ctx.closePath();
@@ -432,6 +468,23 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         // Draw Space
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, canv.width, canv.height);
+
+        // Draw Explosions
+        for (let i = game.explosions.length - 1; i >= 0; i--) {
+            const p = game.explosions[i];
+            p.x += p.xv;
+            p.y += p.yv;
+            p.age++;
+
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = 1 - (p.age / p.life);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            if (p.age >= p.life) game.explosions.splice(i, 1);
+        }
 
         // Draw Enemies
         for (let i = 0; i < game.enemies.length; i++) {
@@ -500,6 +553,22 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
             ctx.closePath();
             ctx.fill(); // Fill the asteroid
             ctx.stroke();
+
+            // Move the asteroid
+            game.roids[i].x += game.roids[i].xv;
+            game.roids[i].y += game.roids[i].yv;
+
+            // Handle edge of screen
+            if (game.roids[i].x < 0 - game.roids[i].r) {
+                game.roids[i].x = canv.width + game.roids[i].r;
+            } else if (game.roids[i].x > canv.width + game.roids[i].r) {
+                game.roids[i].x = 0 - game.roids[i].r;
+            }
+            if (game.roids[i].y < 0 - game.roids[i].r) {
+                game.roids[i].y = canv.height + game.roids[i].r;
+            } else if (game.roids[i].y > canv.height + game.roids[i].r) {
+                game.roids[i].y = 0 - game.roids[i].r;
+            }
         }
 
         // Enemy Shooting & Movement
@@ -515,7 +584,7 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
             if (enemy.type === 'SQUARE') {
                 enemy.shootTime--;
                 // Wraith Stealth Logic: Enemies don't target if stealth is active
-                const isWraithStealth = shipType === 'WRAITH' && ship.abilityActive;
+                const isWraithStealth = ship.type === 'WRAITH' && ship.abilityActive;
 
                 if (enemy.shootTime <= 0 && !isWraithStealth) {
                     // Aim at player: Elite is more precise (lower error)
@@ -558,12 +627,12 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         if (!exploding) {
             if (blinkOn && !ship.dead) {
                 // Dim ship if stealth is active
-                if (shipType === 'WRAITH' && ship.abilityActive) ctx.globalAlpha = 0.3;
+                if (ship.type === 'WRAITH' && ship.abilityActive) ctx.globalAlpha = 0.3;
                 drawShip(ctx, ship.x, ship.y, ship.a, ship.r);
                 ctx.globalAlpha = 1.0;
 
                 // Draw Phalanx Shield
-                if (shipType === 'PHALANX' && ship.abilityActive) {
+                if (ship.type === 'PHALANX' && ship.abilityActive) {
                     ctx.strokeStyle = "cyan";
                     ctx.lineWidth = 2;
                     ctx.beginPath();
@@ -591,7 +660,83 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
                 ship.abilityTimer--;
                 if (ship.abilityTimer <= 0) ship.abilityActive = false;
             }
+
+            // Edge wrap
+            if (ship.x < -ship.r) ship.x = canv.width + ship.r; else if (ship.x > canv.width + ship.r) ship.x = -ship.r;
+            if (ship.y < -ship.r) ship.y = canv.height + ship.r; else if (ship.y > canv.height + ship.r) ship.y = -ship.r;
+
+            // Collision detection ship vs asteroids
+            if (!exploding && ship.blinkNum === 0 && !ship.dead && !ship.abilityActive) {
+                for (let i = 0; i < game.roids.length; i++) {
+                    if (Constants.distBetweenPoints(ship.x, ship.y, game.roids[i].x, game.roids[i].y) < ship.r + game.roids[i].r) {
+                        explodeShip();
+                        destroyAsteroid(i);
+                        break;
+                    }
+                }
+            }
+
+            // Shield collision (special case for Phalanx)
+            if (ship.type === 'PHALANX' && ship.abilityActive) {
+                for (let i = game.roids.length - 1; i >= 0; i--) {
+                    if (Constants.distBetweenPoints(ship.x, ship.y, game.roids[i].x, game.roids[i].y) < ship.r * 1.8 + game.roids[i].r) {
+                        destroyAsteroid(i);
+                    }
+                }
+            }
+
+            // Laser collision with asteroids
+            for (let i = ship.lasers.length - 1; i >= 0; i--) {
+                const l = ship.lasers[i];
+                l.x += l.xv;
+                l.y += l.yv;
+                l.dist += Math.sqrt(l.xv * l.xv + l.yv * l.yv);
+
+                if (l.dist > Constants.LASER_DIST * canv.width) {
+                    ship.lasers.splice(i, 1);
+                    continue;
+                }
+
+                // Draw lasers
+                // Draw lasers
+                ctx.fillStyle = "red"; // Changed to Red
+                ctx.beginPath();
+                ctx.arc(l.x, l.y, l.r || Constants.LASER_SIZE, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Laser glow
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = "red";
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Laser hitting asteroid
+                for (let j = game.roids.length - 1; j >= 0; j--) {
+                    if (Constants.distBetweenPoints(l.x, l.y, game.roids[j].x, game.roids[j].y) < game.roids[j].r) {
+                        destroyAsteroid(j);
+                        ship.lasers.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+
+            // Laser collision with enemies
+            for (let i = ship.lasers.length - 1; i >= 0; i--) {
+                const l = ship.lasers[i];
+                for (let j = game.enemies.length - 1; j >= 0; j--) {
+                    const e = game.enemies[j];
+                    if (Constants.distBetweenPoints(l.x, l.y, e.x, e.y) < e.r) {
+                        e.health--;
+                        ship.lasers.splice(i, 1);
+                        if (e.health <= 0) {
+                            destroyEnemy(j);
+                        }
+                        break;
+                    }
+                }
+            }
         } else {
+            // Explosion handled in previous block
             ctx.fillStyle = "darkred";
             ctx.beginPath(); ctx.arc(ship.x, ship.y, ship.r * 1.7, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = "red";
@@ -606,142 +751,61 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
             ship.explodeTime--;
             if (ship.explodeTime === 0) {
                 game.lives--;
-                if (game.lives === 0) handleGameOver();
+                if (game.lives === 0) handleGameOverState();
                 else game.ship = newShip();
             }
         }
 
-        // Draw Ability HUD
+        // TEXT (LEVEL, GAME OVER)
+        if (game.textAlpha > 0) {
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "rgba(255, 255, 255, " + game.textAlpha + ")";
+            ctx.font = "small-caps " + Constants.TEXT_SIZE + "px 'DejaVu Sans Mono'";
+            ctx.fillText(game.text, canv.width / 2, canv.height * 0.75);
+            game.textAlpha -= (1.0 / Constants.TEXT_FADE_TIME / Constants.FPS);
+        }
+
+        // LIVES
+        for (let i = 0; i < game.lives; i++) {
+            const colour = (exploding && i === game.lives - 1) ? "red" : "white";
+            drawShip(ctx, Constants.SHIP_SIZE + i * Constants.SHIP_SIZE * 1.2, Constants.SHIP_SIZE * 1.5, Math.PI / 2, Constants.SHIP_SIZE / 2, colour);
+        }
+
+        // SCORE
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "white";
+        ctx.font = Constants.TEXT_SIZE + "px 'DejaVu Sans Mono'";
+        ctx.fillText(game.score, canv.width - Constants.SHIP_SIZE / 2, Constants.SHIP_SIZE);
+
+        // EXTRA HUD (ABILITY COOLDOWN)
         if (!ship.dead) {
             const barW = 100;
             const barH = 6;
             const xHUD = 20;
             const yHUD = 70;
 
-            // Background
-            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+            // Cooldown background
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
             ctx.fillRect(xHUD, yHUD, barW, barH);
 
-            // Fill
-            const cdPerc = ship.abilityCooldown > 0 ? (1 - ship.abilityCooldown / Math.ceil((ship.ability.cd / 1000) * Constants.FPS)) : 1;
-            ctx.fillStyle = ship.abilityCooldown > 0 ? "grey" : "gold";
-            ctx.fillRect(xHUD, yHUD, barW * cdPerc, barH);
+            // Cooldown progress
+            const cdTotal = (ship.ability.cd / 1000) * Constants.FPS;
+            const cdLeft = ship.abilityCooldown;
+            const progress = (cdTotal - cdLeft) / cdTotal;
+
+            ctx.fillStyle = progress < 1 ? "rgba(79, 172, 254, 0.5)" : "#4facfe";
+            ctx.fillRect(xHUD, yHUD, barW * progress, barH);
 
             ctx.fillStyle = "white";
-            ctx.font = "10px 'JetBrains Mono'";
+            ctx.font = "10px 'DejaVu Sans Mono'";
+            ctx.textAlign = "left";
             ctx.fillText(ship.ability.name.toUpperCase(), xHUD, yHUD - 5);
         }
-
-        // Screen Edges (Ship)
-        if (ship.x < 0 - ship.r) ship.x = canv.width + ship.r; else if (ship.x > canv.width + ship.r) ship.x = 0 - ship.r;
-        if (ship.y < 0 - ship.r) ship.y = canv.height + ship.r; else if (ship.y > canv.height + ship.r) ship.y = 0 - ship.r;
-
-        // Lasers (Ship)
-        for (let i = ship.lasers.length - 1; i >= 0; i--) {
-            if (ship.lasers[i].dist > Constants.LASER_DIST * canv.width) { ship.lasers.splice(i, 1); continue; }
-            const laser = ship.lasers[i];
-            if (laser.explodeTime > 0) {
-                laser.explodeTime--;
-                if (laser.explodeTime === 0) { ship.lasers.splice(i, 1); continue; }
-                ctx.fillStyle = "orangered";
-                ctx.beginPath(); ctx.arc(laser.x, laser.y, ship.r * 0.75, 0, Math.PI * 2); ctx.fill();
-            } else {
-                laser.x += laser.xv;
-                laser.y += laser.yv;
-                laser.dist += Math.sqrt(laser.xv * laser.xv + laser.yv * laser.yv);
-                ctx.fillStyle = "salmon";
-                ctx.beginPath(); ctx.arc(laser.x, laser.y, (Constants.SHIP_SIZE / 15) * ship.laserSize, 0, Math.PI * 2); ctx.fill();
-
-                // Check hit on enemies
-                for (let j = game.enemies.length - 1; j >= 0; j--) {
-                    const enemy = game.enemies[j];
-                    if (Constants.distBetweenPoints(laser.x, laser.y, enemy.x, enemy.y) < enemy.r) {
-                        enemy.health--;
-                        laser.explodeTime = Math.ceil(Constants.LASER_EXPLODE_DUR * Constants.FPS);
-                        if (enemy.health <= 0) {
-                            destroyEnemy(j);
-                        }
-                        break;
-                    }
-                }
-            }
-            if (laser && laser.x < 0) laser.x = canv.width; else if (laser && laser.x > canv.width) laser.x = 0;
-            if (laser && laser.y < 0) laser.y = canv.height; else if (laser && laser.y > canv.height) laser.y = 0;
-        }
-
-        // Collisions (Asteroids)
-        for (let i = game.roids.length - 1; i >= 0; i--) {
-            const roid = game.roids[i];
-            if (!roid) continue;
-
-            let asteroidHit = false;
-            for (let j = ship.lasers.length - 1; j >= 0; j--) {
-                if (ship.lasers[j].explodeTime === 0 && Constants.distBetweenPoints(roid.x, roid.y, ship.lasers[j].x, ship.lasers[j].y) < roid.r) {
-                    destroyAsteroid(i);
-                    ship.lasers[j].explodeTime = Math.ceil(Constants.LASER_EXPLODE_DUR * Constants.FPS);
-                    asteroidHit = true;
-                    break;
-                }
-            }
-
-            if (!asteroidHit && !exploding && ship.blinkNum === 0 && !ship.dead && Constants.distBetweenPoints(ship.x, ship.y, roid.x, roid.y) < ship.r + roid.r) {
-                const isShielded = shipType === 'PHALANX' && ship.abilityActive;
-                if (!isShielded) {
-                    explodeShip();
-                    destroyAsteroid(i);
-                } else {
-                    // Just destroy/push the asteroid if shielded?
-                    // Let's destroy it but not explode ship
-                    destroyAsteroid(i);
-                }
-            }
-        }
-
-        // Collisions (Enemies vs Ship)
-        if (!exploding && ship.blinkNum === 0 && !ship.dead) {
-            const isShielded = shipType === 'PHALANX' && ship.abilityActive;
-            for (let i = game.enemies.length - 1; i >= 0; i--) {
-                const enemy = game.enemies[i];
-                if (Constants.distBetweenPoints(ship.x, ship.y, enemy.x, enemy.y) < ship.r + enemy.r) {
-                    if (!isShielded) {
-                        explodeShip();
-                        destroyEnemy(i);
-                    } else {
-                        destroyEnemy(i);
-                    }
-                }
-            }
-        }
-
-        // Asteroid Movement
-        for (let i = 0; i < game.roids.length; i++) {
-            game.roids[i].x += game.roids[i].xv; game.roids[i].y += game.roids[i].yv;
-            if (game.roids[i].x < 0 - game.roids[i].r) game.roids[i].x = canv.width + game.roids[i].r; else if (game.roids[i].x > canv.width + game.roids[i].r) game.roids[i].x = 0 - game.roids[i].r;
-            if (game.roids[i].y < 0 - game.roids[i].r) game.roids[i].y = canv.height + game.roids[i].r; else if (game.roids[i].y > canv.height + game.roids[i].r) game.roids[i].y = 0 - game.roids[i].r;
-        }
-
-        // Text & UI
-        if (game.textAlpha >= 0) {
-            ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillStyle = "rgba(255, 255, 255, " + game.textAlpha + ")";
-            ctx.font = "small-caps " + Constants.TEXT_SIZE + "px dejavu sans mono";
-            ctx.fillText(game.text, canv.width / 2, canv.height * 0.75);
-            game.textAlpha -= (1.0 / Constants.TEXT_FADE_TIME / Constants.FPS);
-        }
-
-        const uiScale = getScale();
-        const shipSize = Constants.SHIP_SIZE * uiScale;
-        for (let i = 0; i < game.lives; i++) drawShip(ctx, shipSize + i * shipSize * 1.2, shipSize, 0.5 * Math.PI, ship.r, (exploding && i === game.lives - 1 ? "red" : "white"));
-        ctx.textAlign = "right"; ctx.fillStyle = "white"; ctx.font = (Constants.TEXT_SIZE * uiScale) + "px dejavu sans mono";
-        ctx.fillText(game.score, canv.width - shipSize / 2, shipSize);
     };
 
-    return (
-        <canvas
-            id="gameCanvas"
-            ref={canvasRef}
-        />
-    );
+    return <canvas ref={canvasRef} id="gameCanvas" />;
 };
 
 export default GameCanvas;

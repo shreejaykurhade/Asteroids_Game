@@ -5,6 +5,7 @@ export const GAME_LIVES = 3;
 export const LASER_DIST = 0.6;
 export const LASER_EXPLODE_DUR = 0.1;
 export const LASER_MAX = 10;
+export const LASER_SIZE = 5;
 export const LASER_SPD = 500;
 export const ROID_JAG = 0.4;
 export const ROID_PTS_LGE = 20;

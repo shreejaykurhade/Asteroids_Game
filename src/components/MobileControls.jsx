@@ -7,7 +7,7 @@ const MobileControls = () => {
             'ArrowRight': 39,
             'ArrowUp': 38,
             'Space': 32,
-            'Shift': 16
+            'Z': 90
         };
         const event = new KeyboardEvent(type, {
             key: key,
@@ -42,29 +42,33 @@ const MobileControls = () => {
                 </div>
             </div>
             <div className="control-group action-group">
-                <div
-                    className="btn-ctrl"
-                    id="btn-ability"
-                    onPointerDown={() => handleAction('Shift', true)}
-                    onPointerUp={() => handleAction('Shift', false)}
-                >
-                    <Radio size={32} />
+                <div className="action-row-top">
+                    <div
+                        className="btn-ctrl btn-secondary"
+                        id="btn-ability"
+                        onPointerDown={() => handleAction('Z', true)}
+                        onPointerUp={() => handleAction('Z', false)}
+                    >
+                        <Radio size={28} />
+                    </div>
                 </div>
-                <div
-                    className="btn-ctrl"
-                    id="btn-thrust"
-                    onPointerDown={() => handleAction('ArrowUp', true)}
-                    onPointerUp={() => handleAction('ArrowUp', false)}
-                >
-                    <ChevronUp size={32} />
-                </div>
-                <div
-                    className="btn-ctrl"
-                    id="btn-shoot"
-                    onPointerDown={() => handleAction('Space', true)}
-                    onPointerUp={() => handleAction('Space', false)}
-                >
-                    <Zap size={32} />
+                <div className="action-row-main">
+                    <div
+                        className="btn-ctrl"
+                        id="btn-shoot"
+                        onPointerDown={() => handleAction('Space', true)}
+                        onPointerUp={() => handleAction('Space', false)}
+                    >
+                        <Zap size={32} />
+                    </div>
+                    <div
+                        className="btn-ctrl"
+                        id="btn-thrust"
+                        onPointerDown={() => handleAction('ArrowUp', true)}
+                        onPointerUp={() => handleAction('ArrowUp', false)}
+                    >
+                        <ChevronUp size={32} />
+                    </div>
                 </div>
             </div>
         </div>

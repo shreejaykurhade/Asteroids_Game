@@ -1,15 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SpeakerLoudIcon, SpeakerOffIcon } from '@radix-ui/react-icons';
-import { Trophy, Rocket } from 'lucide-react';
+import { Trophy, Rocket, HelpCircle } from 'lucide-react';
 
 const Header = ({
     isMuted,
     onMuteToggle,
     onLeaderboardToggle,
     onHangarToggle,
+    onGuideToggle,
     showLeaderboardBtn = true,
     showHangarBtn = true,
+    showGuideBtn = true,
     isVerified,
     onLogout
 }) => {
@@ -38,6 +40,15 @@ const Header = ({
                         title="Ship Hangar"
                     >
                         <Rocket size={20} />
+                    </div>
+                )}
+                {showGuideBtn && (
+                    <div
+                        className="nav-icon-btn"
+                        onClick={onGuideToggle}
+                        title="How to Play"
+                    >
+                        <HelpCircle size={20} />
                     </div>
                 )}
                 <div

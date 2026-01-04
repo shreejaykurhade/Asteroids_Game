@@ -4,6 +4,7 @@ import Header from './components/Header';
 import Home from './pages/Home';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ShipSelectionPage from './pages/ShipSelectionPage';
+import PilotGuidePage from './pages/PilotGuidePage';
 import GameCanvas from './components/GameCanvas';
 import MobileControls from './components/MobileControls';
 import { getLeaderboard, saveToLeaderboard } from './utils/leaderboard';
@@ -109,18 +110,21 @@ const AppContent = () => {
     };
 
     const isLeaderboardPage = location.pathname === '/leaderboard';
-    const isHangarPage = location.pathname === '/hangar'; // Added for hangar page check
+    const isHangarPage = location.pathname === '/hangar';
+    const isGuidePage = location.pathname === '/guide';
 
     return (
         <div className="app">
-            {!gameStarted && !isHangarPage && (
+            {!gameStarted && !isHangarPage && !isGuidePage && (
                 <Header
                     isMuted={isMuted}
                     onMuteToggle={() => setIsMuted(!isMuted)}
                     onLeaderboardToggle={() => navigate('/leaderboard')}
-                    onHangarToggle={() => navigate('/hangar')} // Added onHangarToggle
+                    onHangarToggle={() => navigate('/hangar')}
+                    onGuideToggle={() => navigate('/guide')}
                     showLeaderboardBtn={!isLeaderboardPage}
-                    showHangarBtn={!isHangarPage} // Added showHangarBtn
+                    showHangarBtn={!isHangarPage}
+                    showGuideBtn={!isGuidePage}
                     isVerified={isVerified}
                     onLogout={handleLogout}
                 />
@@ -147,7 +151,7 @@ const AppContent = () => {
                 <Route path="/leaderboard" element={
                     <LeaderboardPage entries={leaderboard} isVerified={isVerified} />
                 } />
-                <Route path="/hangar" element={ // Added new route for /hangar
+                <Route path="/hangar" element={
                     <ShipSelectionPage
                         selectedShip={selectedShip}
                         onShipSelect={(ship) => {
@@ -156,6 +160,7 @@ const AppContent = () => {
                         }}
                     />
                 } />
+                <Route path="/guide" element={<PilotGuidePage />} />
             </Routes>
 
             <GameCanvas
@@ -169,7 +174,7 @@ const AppContent = () => {
 
             {gameStarted && <MobileControls />}
 
-            {!gameStarted && !isHangarPage && <footer>MADE WITH ❤️ BY SHREEJAY</footer>}
+            {!gameStarted && !isHangarPage && !isGuidePage && <footer>MADE WITH ❤️ BY SHREEJAY</footer>}
 
             {showNotification && (
                 <div className="record-notification">
