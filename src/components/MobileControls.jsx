@@ -1,17 +1,13 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight, ChevronUp, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, Zap, Radio } from 'lucide-react';
 
 const MobileControls = () => {
-    // These are placeholders for visual elements. 
-    // They work by dispatching keyboard events to the window, 
-    // which the GameCanvas will listen to.
-
     const dispatchKey = (key, type) => {
         const keyCodeMap = {
             'ArrowLeft': 37,
             'ArrowRight': 39,
             'ArrowUp': 38,
-            'Space': 32
+            'Space': 32,
+            'Shift': 16
         };
         const event = new KeyboardEvent(type, {
             key: key,
@@ -33,7 +29,6 @@ const MobileControls = () => {
                     id="btn-left"
                     onPointerDown={() => handleAction('ArrowLeft', true)}
                     onPointerUp={() => handleAction('ArrowLeft', false)}
-                    onPointerLeave={() => handleAction('ArrowLeft', false)}
                 >
                     <ChevronLeft size={32} />
                 </div>
@@ -42,18 +37,24 @@ const MobileControls = () => {
                     id="btn-right"
                     onPointerDown={() => handleAction('ArrowRight', true)}
                     onPointerUp={() => handleAction('ArrowRight', false)}
-                    onPointerLeave={() => handleAction('ArrowRight', false)}
                 >
                     <ChevronRight size={32} />
                 </div>
             </div>
-            <div className="control-group">
+            <div className="control-group action-group">
+                <div
+                    className="btn-ctrl"
+                    id="btn-ability"
+                    onPointerDown={() => handleAction('Shift', true)}
+                    onPointerUp={() => handleAction('Shift', false)}
+                >
+                    <Radio size={32} />
+                </div>
                 <div
                     className="btn-ctrl"
                     id="btn-thrust"
                     onPointerDown={() => handleAction('ArrowUp', true)}
                     onPointerUp={() => handleAction('ArrowUp', false)}
-                    onPointerLeave={() => handleAction('ArrowUp', false)}
                 >
                     <ChevronUp size={32} />
                 </div>

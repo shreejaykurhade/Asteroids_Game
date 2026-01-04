@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
-import { CONFIG } from '../utils/config';
 
 const Home = ({ onStart, leaderboard, isVerified, playerName }) => {
     const [inputValue, setInputValue] = useState(playerName);
@@ -14,15 +13,8 @@ const Home = ({ onStart, leaderboard, isVerified, playerName }) => {
 
     const handleStart = () => {
         if (!inputValue.trim()) {
-            setErrorVisible(false); // Reset for re-trigger
-            setTimeout(() => {
-                setErrorVisible(true);
-                // Physical vibration if supported
-                if (window.navigator.vibrate) {
-                    window.navigator.vibrate([100, 50, 100]);
-                }
-            }, 10);
-
+            setErrorVisible(false);
+            setTimeout(() => setErrorVisible(true), 10);
             setTimeout(() => setErrorVisible(false), 2000);
             return;
         }
@@ -31,24 +23,26 @@ const Home = ({ onStart, leaderboard, isVerified, playerName }) => {
 
     return (
         <div className="main-container">
-            <div className="retro-container">
+            <div className={`retro-container ${isVerified ? "verified-status" : ""}`}>
                 <h1>ASTEROIDS</h1>
-                <div className="input-group">
-                    <input
-                        type="text"
-                        id="username"
-                        value={inputValue}
-                        onChange={(e) => !isVerified && setInputValue(e.target.value)}
-                        disabled={isVerified}
-                        placeholder={errorVisible ? "NAME REQUIRED" : (isVerified ? "VERIFIED" : "ENTER NAME")}
-                        className={errorVisible ? "error" : ""}
-                        onKeyPress={(e) => e.key === 'Enter' && handleStart()}
-                    />
-                </div>
 
-                <button id="start-btn" onClick={handleStart}>
-                    START MISSION
-                </button>
+                <div className="home-actions">
+                    <div className="input-group">
+                        <input
+                            type="text"
+                            id="username"
+                            value={inputValue}
+                            onChange={(e) => !isVerified && setInputValue(e.target.value)}
+                            disabled={isVerified}
+                            placeholder={errorVisible ? "NAME REQUIRED" : (isVerified ? "VERIFIED" : "ENTER NAME")}
+                            className={errorVisible ? "error" : ""}
+                            onKeyPress={(e) => e.key === 'Enter' && handleStart()}
+                        />
+                    </div>
+                    <button id="start-btn" onClick={handleStart}>
+                        START MISSION
+                    </button>
+                </div>
 
                 <div id="mini-leaderboard">
                     {!isVerified ? (

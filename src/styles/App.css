@@ -35,51 +35,91 @@ body {
     display: none !important;
 }
 
-.top-actions {
+/* Navbar Styles */
+.navbar {
     position: fixed;
-    top: 25px;
-    right: 30px;
+    top: 0;
+    left: 0;
+    width: 100%;
     display: flex;
-    gap: 30px;
+    justify-content: space-between;
     align-items: center;
-    z-index: 120;
-    /* Above canvas and other overlays */
+    padding: 20px 50px;
+    box-sizing: border-box;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
 }
 
-.header-auth {
-    display: flex;
-    align-items: center;
-}
-
-.header-logout {
-    font-size: 0.7rem;
-    padding: 4px 10px;
-}
-
-#mute-btn,
-#leaderboard-toggle {
+.nav-left {
     cursor: pointer;
-    user-select: none;
-    opacity: 0.8;
+    display: flex;
+    align-items: center;
+}
+
+.logo-text {
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: white;
+    text-transform: uppercase;
+}
+
+.logo-accent {
+    color: #4facfe;
+    text-shadow: 0 0 15px rgba(79, 172, 254, 0.7);
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 35px;
+    /* Perfect equal spacing for all nav elements */
+}
+
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    /* Equal spacing between icons */
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 25px;
+    border-radius: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-icon-btn {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-#mute-btn svg,
-#leaderboard-toggle svg {
-    width: 28px;
-    height: 28px;
+.nav-icon-btn:hover {
+    color: #4facfe;
 }
 
-#mute-btn:hover,
-#leaderboard-toggle:hover {
-    transform: translateY(-3px);
+.nav-logout-btn {
+    background: transparent;
+    color: #ff3e3e;
+    border: 1px solid #ff3e3e;
+    /* Back to original thin border */
+    padding: 6px 16px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    letter-spacing: 1px;
 }
 
-#mute-btn.muted {
-    opacity: 0.5;
+.nav-logout-btn:hover {
+    background: #ff3e3e;
+    color: white;
+    /* Transformation removed as requested to avoid layout shift */
 }
 
 .main-container {
@@ -150,6 +190,103 @@ input[type="text"]:focus {
     box-shadow: 0 0 10px white;
 }
 
+
+/* Verified Dashboard Status */
+.verified-status {
+    position: relative;
+    border: none !important;
+    background: black;
+    z-index: 1;
+}
+
+.verified-status::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background: conic-gradient(from 0deg,
+            #ffffff,
+            #fff9c4,
+            #ffd600,
+            #ffffff,
+            #fff9c4,
+            #ffd600,
+            #ffffff);
+    z-index: -1;
+    animation: rotateBorder 4s linear infinite;
+}
+
+.verified-status::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: black;
+    z-index: -1;
+}
+
+/* Verified Dashboard Status with Rotating Border */
+.verified-status {
+    position: relative;
+    border: none !important;
+    background: black;
+    z-index: 1;
+    overflow: hidden;
+    /* Clips the rotating pseudo-element */
+}
+
+.verified-status::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg,
+            #ffffff,
+            #fff9c4,
+            #ffd600,
+            #ffffff,
+            #fff9c4,
+            #ffd600,
+            #ffffff);
+    z-index: -2;
+    animation: rotateBorder 3s linear infinite;
+}
+
+.verified-status::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    /* Precise border thickness */
+    left: 3px;
+    right: 3px;
+    bottom: 3px;
+    background: black;
+    z-index: -1;
+    border-radius: 8px;
+}
+
+@keyframes rotateBorder {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.verified-status input[type="text"] {
+    color: #fff9c4 !important;
+    border-color: rgba(255, 214, 0, 0.4);
+    box-shadow: 0 0 10px rgba(255, 214, 0, 0.1);
+}
+
 @keyframes shake {
 
     0%,
@@ -185,10 +322,23 @@ input[type="text"]:focus {
     justify-content: flex-end;
 }
 
+#g_id_signin,
+#g_id_signin *,
+.google-auth-retro,
+.google-auth-retro *:focus,
+.google-auth-retro *:active,
+.google-auth-retro:focus-within {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    border: none;
+    box-shadow: none !important;
+}
+
 .google-auth-retro {
     margin-top: 40px;
     padding: 10px;
-    border: 2px solid white;
+    border: 2px solid white !important;
+    /* Re-enforce white border */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -348,7 +498,9 @@ button:hover {
     flex-grow: 1;
     overflow-y: auto;
     padding-right: 10px;
-    margin-top: 15px;
+    padding-top: 45px;
+    /* Added room for top tooltips */
+    margin-top: 0;
 }
 
 #close-leaderboard {
@@ -416,25 +568,29 @@ button:hover {
     cursor: help;
     vertical-align: middle;
     color: #4ade80;
-    /* Nice emerald green for verification */
+    z-index: 500;
+    /* Ensure it stays above row items */
 }
 
 .verified-badge::after {
     content: "Verified User";
     position: absolute;
-    bottom: 120%;
+    bottom: 125%;
+    /* Slightly more space */
     left: 50%;
     transform: translateX(-50%);
     background: white;
     color: black;
-    padding: 4px 8px;
-    font-size: 0.7rem;
-    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    border-radius: 6px;
     white-space: nowrap;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.2s ease;
-    z-index: 300;
+    transition: all 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    border: 1px solid gold;
 }
 
 .verified-badge:hover::after {
@@ -513,5 +669,532 @@ footer {
 
     h1 {
         font-size: 2rem;
+    }
+}
+
+/* Record Notification & PB Celebrations */
+.record-notification {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    padding: 2rem 4rem;
+    background: rgba(0, 0, 0, 0.95);
+    border: 3px solid #ffd700;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.2);
+    animation: recordSlideIn 0.6s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
+}
+
+.record-glow {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 12px;
+    box-shadow: 0 0 30px #ffd700;
+    opacity: 0.5;
+    animation: recordPulse 1.5s infinite alternate;
+}
+
+.record-content h2 {
+    color: #ffd700;
+    font-size: 2.5rem;
+    margin: 0;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+    font-weight: 900;
+    letter-spacing: 4px;
+}
+
+.record-content p {
+    color: white;
+    font-size: 1.3rem;
+    margin-top: 15px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+@keyframes recordSlideIn {
+    0% {
+        transform: translate(-50%, -150%) scale(0.5);
+        opacity: 0;
+    }
+
+    70% {
+        transform: translate(-50%, -45%) scale(1.1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes recordPulse {
+    from {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0.7;
+        transform: scale(1.02);
+    }
+}
+
+.verified-badge-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    vertical-align: middle;
+    filter: drop-shadow(0 0 3px gold);
+}
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    opacity: 0.5;
+    letter-spacing: 2px;
+}
+
+/* Ship Arsenal & Selector */
+.ship-arsenal {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    color: #4facfe;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+}
+
+.ship-selector {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.ship-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.ship-info {
+    text-align: center;
+}
+
+.ship-name {
+    margin: 0;
+    color: gold;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.ship-desc {
+    margin: 5px 0 0;
+    font-size: 0.75rem;
+    opacity: 0.6;
+    max-width: 200px;
+}
+
+.nav-arrow {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 10px;
+    opacity: 0.5;
+    transition: all 0.2s;
+}
+
+.nav-arrow:hover {
+    opacity: 1;
+    transform: scale(1.2);
+    color: gold;
+}
+
+.ship-preview-canvas {
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.2));
+}
+
+.ship-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.stat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 45%;
+}
+
+.stat-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.stat-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    box-shadow: 0 0 5px #00f2fe;
+}
+
+.stat-ability {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: gold;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* Hangar Page Styles */
+.hangar-page {
+    background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+    height: 100vh;
+}
+
+.hangar-page .retro-container {
+    padding: 60px 80px;
+    position: relative;
+    max-width: 900px;
+    width: 90%;
+}
+
+.back-btn-corner {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 5px 15px;
+    font-size: 0.7rem;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+}
+
+.back-btn-corner:hover {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.hangar-commander-view {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.ship-spotlight {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 40px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 30px;
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    width: 600px;
+    height: 380px;
+    /* Fixed height to prevent shifts */
+    box-sizing: border-box;
+}
+
+.preview-container {
+    width: 180px;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, rgba(79, 172, 254, 0.15) 0%, transparent 70%);
+}
+
+.ship-details-card {
+    flex: 1;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.hangar-ship-name {
+    font-size: 2rem;
+    color: gold;
+    margin: 0 0 5px 0;
+    letter-spacing: 4px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.hangar-ship-desc {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    height: 45px;
+    /* Fixed height for description */
+    overflow: hidden;
+}
+
+.hangar-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: auto;
+    /* Push button to bottom */
+}
+
+.hangar-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    opacity: 0.7;
+}
+
+.hangar-stat-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.hangar-stat-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    box-shadow: 0 0 8px #00f2fe;
+}
+
+.hangar-special-ability {
+    margin-top: 10px;
+    padding: 10px 15px;
+    background: rgba(255, 215, 0, 0.08);
+    border-left: 2px solid gold;
+}
+
+.ability-title {
+    font-size: 0.65rem;
+    color: gold;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+}
+
+.ability-name {
+    font-size: 1rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.confirm-ship-btn {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px;
+    background: #4facfe;
+    border: none;
+    color: white;
+    font-weight: bold;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.confirm-ship-btn:hover {
+    background: #00f2fe;
+    box-shadow: 0 0 15px rgba(79, 172, 254, 0.5);
+}
+
+.nav-arrow.lg {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nav-arrow.lg:hover {
+    color: white;
+    transform: scale(1.1);
+}
+
+.center-actions {
+    gap: 20px;
+    align-items: center;
+}
+
+/* Mobile Adjustments for Hangar */
+@media (max-width: 768px) {
+    .hangar-page .retro-container {
+        padding: 40px 15px 20px;
+        width: 92%;
+        border-width: 2px;
+        margin-top: 60px;
+        /* Space for fixed header */
+        margin-bottom: 20px;
+    }
+
+    .hangar-commander-view {
+        display: grid;
+        grid-template-areas:
+            "spotlight spotlight"
+            "prev next";
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .ship-spotlight {
+        grid-area: spotlight;
+        flex-direction: column;
+        width: 100%;
+        height: auto;
+        min-height: 480px;
+        padding: 20px;
+        gap: 15px;
+    }
+
+    .preview-container {
+        width: 120px;
+        height: 120px;
+    }
+
+    .hangar-preview-canvas {
+        width: 100px !important;
+        height: 100px !important;
+    }
+
+    .ship-details-card {
+        text-align: center;
+        width: 100%;
+    }
+
+    .hangar-ship-name {
+        font-size: 1.4rem;
+        letter-spacing: 2px;
+    }
+
+    .hangar-ship-desc {
+        font-size: 0.7rem;
+        height: auto;
+        line-height: 1.4;
+        margin-bottom: 15px;
+    }
+
+    .hangar-stat-item {
+        gap: 2px;
+    }
+
+    .stat-label {
+        font-size: 0.6rem;
+        justify-content: center;
+    }
+
+    .nav-arrow.lg {
+        padding: 10px;
+    }
+
+    .hangar-commander-view .nav-arrow.lg:first-of-type {
+        grid-area: prev;
+        justify-self: center;
+    }
+
+    .hangar-commander-view .nav-arrow.lg:last-of-type {
+        grid-area: next;
+        justify-self: center;
+    }
+
+    .back-btn-corner {
+        padding: 4px 10px;
+        font-size: 0.6rem;
+    }
+
+    .confirm-ship-btn {
+        padding: 10px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-height: 700px) {
+    .hangar-page {
+        overflow-y: auto;
+        padding-top: 60px;
+        padding-bottom: 60px;
+    }
+
+    .hangar-page .main-container {
+        min-height: auto;
+        justify-content: flex-start;
+    }
+}
+
+/* Navbar mobile tweaks */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 10px 20px;
+    }
+
+    .logo-text {
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+    }
+
+    .nav-right {
+        gap: 15px;
+    }
+
+    .nav-icon-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .nav-logout-btn {
+        padding: 4px 10px;
+        font-size: 0.65rem;
     }
 }

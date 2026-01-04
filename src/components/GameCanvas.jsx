@@ -2,8 +2,9 @@ import React, { useRef, useEffect } from 'react';
 import * as Constants from '../utils/constants';
 import { Music, Sound } from '../utils/audio';
 import { saveToLeaderboard } from '../utils/leaderboard';
+import { SHIP_DESIGNS } from '../utils/shipDesigns';
 
-const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }) => {
+const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, shipType }) => {
     const canvasRef = useRef(null);
     const gameRef = useRef({
         level: 0,
@@ -15,6 +16,8 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
         textAlpha: 0,
         roidsLeft: 0,
         roidsTotal: 0,
+        enemies: [],
+        enemyLasers: [],
         gameLoop: null,
         sounds: {
             explode: new Sound("/sounds/explode.m4a"),
@@ -58,14 +61,17 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
                 case 32: // Space
                     shootLaser();
                     break;
+                case 16: // Shift
+                    activateAbility();
+                    break;
                 case 37: // Left
-                    gameRef.current.ship.rot = Constants.SHIP_TURN_SPD / 180 * Math.PI / Constants.FPS;
+                    gameRef.current.ship.rot = gameRef.current.ship.turn;
                     break;
                 case 38: // Up
                     gameRef.current.ship.thrusting = true;
                     break;
                 case 39: // Right
-                    gameRef.current.ship.rot = -Constants.SHIP_TURN_SPD / 180 * Math.PI / Constants.FPS;
+                    gameRef.current.ship.rot = -gameRef.current.ship.turn;
                     break;
                 default: break;
             }
@@ -112,14 +118,22 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
         game.text = "Level " + (game.level + 1);
         game.textAlpha = 1.0;
         createAsteroidBelt();
+        // Start spawning enemies from Level 10 onwards as requested
+        if (game.level >= 9) {
+            spawnEnemies();
+        }
     };
 
     const newShip = () => {
+        const scale = getScale();
+        const design = SHIP_DESIGNS[shipType] || SHIP_DESIGNS.CLASSIC;
+        const stats = design.stats;
+
         return {
             x: window.innerWidth / 2,
             y: window.innerHeight / 2,
             a: 90 / 180 * Math.PI,
-            r: Constants.SHIP_SIZE / 2,
+            r: (Constants.SHIP_SIZE * scale) / 2,
             blinkNum: Math.ceil(Constants.SHIP_INV_DUR / Constants.SHIP_BLINK_DUR),
             blinkTime: Math.ceil(Constants.SHIP_BLINK_DUR * Constants.FPS),
             canShoot: true,
@@ -128,26 +142,101 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
             lasers: [],
             rot: 0,
             thrusting: false,
-            thrust: { x: 0, y: 0 }
+            thrust: { x: 0, y: 0 },
+            // Specialized Stats
+            accel: Constants.SHIP_THRUST * stats.accel,
+            turn: (Constants.SHIP_TURN_SPD * stats.turn) / 180 * Math.PI / Constants.FPS,
+            fireRate: stats.fireRate,
+            fireCooldown: 0,
+            laserSize: stats.laserSize || 1.0,
+            // Ability State
+            ability: design.ability,
+            abilityCooldown: 0,
+            abilityActive: false,
+            abilityTimer: 0
         };
+    };
+
+    const getScale = () => {
+        return window.innerWidth < 768 ? 0.7 : 1.0;
     };
 
     const createAsteroidBelt = () => {
         const game = gameRef.current;
         game.roids = [];
-        game.roidsTotal = (Constants.ROID_NUM + game.level) * 7;
+        const scale = getScale();
+
+        // Calculate asteroid count based on level
+        let numAsteroids;
+        if (game.level < 5) numAsteroids = Math.floor(Math.random() * 3) + 2; // 2-4
+        else if (game.level < 10) numAsteroids = Math.floor(Math.random() * 3) + 3; // 3-5
+        else if (game.level < 15) numAsteroids = Math.floor(Math.random() * 5) + 3; // 3-7
+        else if (game.level < 20) numAsteroids = Math.floor(Math.random() * 3) + 5; // 5-7
+        else numAsteroids = Math.floor(Math.random() * 4) + 7; // 7-10
+
+        game.roidsTotal = numAsteroids * 7;
         game.roidsLeft = game.roidsTotal;
         let x, y;
-        for (let i = 0; i < Constants.ROID_NUM + game.level; i++) {
+        for (let i = 0; i < numAsteroids; i++) {
             do {
                 x = Math.floor(Math.random() * window.innerWidth);
                 y = Math.floor(Math.random() * window.innerHeight);
-            } while (Constants.distBetweenPoints(game.ship.x, game.ship.y, x, y) < Constants.ROID_SIZE * 2 + game.ship.r);
-            game.roids.push(newAsteroid(x, y, Math.ceil(Constants.ROID_SIZE / 2)));
+            } while (Constants.distBetweenPoints(game.ship.x, game.ship.y, x, y) < Constants.ROID_SIZE * scale * 2 + game.ship.r);
+            // Size 3 = Large
+            game.roids.push(newAsteroid(x, y, Math.ceil(Constants.ROID_SIZE * scale / 2), 3));
         }
     };
 
-    const newAsteroid = (x, y, r) => {
+    const spawnEnemies = () => {
+        const game = gameRef.current;
+        game.enemies = [];
+
+        // Gating rules: 
+        // Hexagons: Level 10+ (game.level 9+)
+        // Squares: Level 15+ (game.level 14+)
+        // Elite Squares: Level 17+ (game.level 16+)
+
+        const types = [];
+        if (game.level >= 9) types.push('HEXAGON');
+        if (game.level >= 14) types.push('SQUARE');
+        if (game.level >= 16) types.push('ELITE');
+
+        if (types.length === 0) return;
+
+        const numEnemies = Math.min(1 + Math.floor((game.level - 8) / 3), 5);
+        for (let i = 0; i < numEnemies; i++) {
+            let x, y;
+            do {
+                x = Math.floor(Math.random() * window.innerWidth);
+                y = Math.floor(Math.random() * window.innerHeight);
+            } while (Constants.distBetweenPoints(game.ship.x, game.ship.y, x, y) < Constants.ROID_SIZE * 3);
+
+            const type = types[Math.floor(Math.random() * types.length)];
+            game.enemies.push(newEnemy(x, y, type));
+        }
+    };
+
+    const newEnemy = (x, y, type) => {
+        const game = gameRef.current;
+        const lvlMult = 1 + 0.1 * game.level;
+        const scale = getScale();
+        const baseSize = Constants.SHIP_SIZE * scale;
+
+        return {
+            x, y,
+            type: type === 'ELITE' ? 'SQUARE' : type,
+            isElite: type === 'ELITE',
+            r: type === 'HEXAGON' ? baseSize * 1.5 : baseSize * 0.9,
+            xv: (Math.random() * 2 - 1) * Constants.ROID_SPD * 0.5 * lvlMult / Constants.FPS,
+            yv: (Math.random() * 2 - 1) * Constants.ROID_SPD * 0.5 * lvlMult / Constants.FPS,
+            health: type === 'HEXAGON' ? 5 : (type === 'ELITE' ? 3 : 1),
+            maxHealth: type === 'HEXAGON' ? 5 : (type === 'ELITE' ? 3 : 1),
+            shootTime: type !== 'HEXAGON' ? Math.floor(Math.random() * 150) + 100 : 0,
+            a: Math.random() * Math.PI * 2
+        };
+    };
+
+    const newAsteroid = (x, y, r, size) => {
         const game = gameRef.current;
         const lvlMult = 1 + 0.1 * game.level;
         const roid = {
@@ -156,6 +245,7 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
             yv: Math.random() * Constants.ROID_SPD * lvlMult / Constants.FPS * (Math.random() < 0.5 ? 1 : -1),
             a: Math.random() * Math.PI * 2,
             r: r,
+            size: size, // 3: Large, 2: Medium, 1: Small
             offs: [],
             vert: Math.floor(Math.random() * (Constants.ROID_VERT + 1) + Constants.ROID_VERT / 2)
         };
@@ -168,18 +258,88 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
     const shootLaser = () => {
         const game = gameRef.current;
         const ship = game.ship;
+        if (ship.dead) return;
+
+        // Check fire rate cooldown
+        if (ship.fireCooldown > 0) return;
+
         if (ship.canShoot && ship.lasers.length < Constants.LASER_MAX) {
-            ship.lasers.push({
-                x: ship.x + 4 / 3 * ship.r * Math.cos(ship.a),
-                y: ship.y - 4 / 3 * ship.r * Math.sin(ship.a),
-                xv: Constants.LASER_SPD * Math.cos(ship.a) / Constants.FPS,
-                yv: -Constants.LASER_SPD * Math.sin(ship.a) / Constants.FPS,
-                dist: 0,
-                explodeTime: 0
-            });
+            const createLaser = (angleOffset = 0) => {
+                ship.lasers.push({
+                    x: ship.x + 4 / 3 * ship.r * Math.cos(ship.a + angleOffset),
+                    y: ship.y - 4 / 3 * ship.r * Math.sin(ship.a + angleOffset),
+                    xv: Constants.LASER_SPD * Math.cos(ship.a + angleOffset) / Constants.FPS,
+                    yv: -Constants.LASER_SPD * Math.sin(ship.a + angleOffset) / Constants.FPS,
+                    dist: 0,
+                    explodeTime: 0,
+                    r: Constants.LASER_SIZE * ship.laserSize // Use ship.laserSize for projectile geometry
+                });
+            };
+
+            createLaser();
+
             game.sounds.laser.play(!isMuted, gameStarted);
+            ship.fireCooldown = Math.ceil((Constants.FPS / 2) * ship.fireRate);
         }
         ship.canShoot = false;
+    };
+
+    const activateAbility = () => {
+        const game = gameRef.current;
+        const ship = game.ship;
+        if (ship.dead || ship.abilityCooldown > 0) return;
+
+        const type = shipType;
+
+        switch (type) {
+            case 'INTERCEPTOR':
+                // Triple Burst
+                for (let i = -1; i <= 1; i++) {
+                    ship.lasers.push({
+                        x: ship.x,
+                        y: ship.y,
+                        xv: Constants.LASER_SPD * Math.cos(ship.a + i * 0.2) / Constants.FPS,
+                        yv: -Constants.LASER_SPD * Math.sin(ship.a + i * 0.2) / Constants.FPS,
+                        dist: 0,
+                        explodeTime: 0
+                    });
+                }
+                game.sounds.laser.play(!isMuted, gameStarted);
+                break;
+            case 'VINDICATOR':
+                // Gravity Wave: Push asteroids away
+                game.roids.forEach(roid => {
+                    const dist = Constants.distBetweenPoints(ship.x, ship.y, roid.x, roid.y);
+                    if (dist < 300) {
+                        const angle = Math.atan2(roid.y - ship.y, roid.x - ship.x);
+                        roid.xv += Math.cos(angle) * 10;
+                        roid.yv += Math.sin(angle) * 10;
+                    }
+                });
+                ship.abilityActive = true;
+                ship.abilityTimer = 10; // Visual flash
+                break;
+            case 'PHALANX':
+                // Static Shield
+                ship.abilityActive = true;
+                ship.abilityTimer = Math.ceil(2 * Constants.FPS); // 2s shield
+                break;
+            case 'SCOUT':
+                // Warp Dash
+                ship.thrust.x += Math.cos(ship.a) * 50;
+                ship.thrust.y -= Math.sin(ship.a) * 50;
+                ship.abilityActive = true;
+                ship.abilityTimer = 10;
+                break;
+            case 'WRAITH':
+                // Stealth
+                ship.abilityActive = true;
+                ship.abilityTimer = Math.ceil(4 * Constants.FPS); // 4s stealth
+                break;
+            default: break;
+        }
+
+        ship.abilityCooldown = Math.ceil((ship.ability.cd / 1000) * Constants.FPS);
     };
 
     const destroyAsteroid = (index) => {
@@ -188,14 +348,15 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
         const x = roid.x;
         const y = roid.y;
         const r = roid.r;
+        const size = roid.size;
 
-        if (r === Math.ceil(Constants.ROID_SIZE / 2)) {
-            game.roids.push(newAsteroid(x, y, Math.ceil(Constants.ROID_SIZE / 4)));
-            game.roids.push(newAsteroid(x, y, Math.ceil(Constants.ROID_SIZE / 4)));
+        if (size === 3) { // Large -> Medium
+            game.roids.push(newAsteroid(x, y, Math.ceil(r / 2), 2));
+            game.roids.push(newAsteroid(x, y, Math.ceil(r / 2), 2));
             game.score += Constants.ROID_PTS_LGE;
-        } else if (r === Math.ceil(Constants.ROID_SIZE / 4)) {
-            game.roids.push(newAsteroid(x, y, Math.ceil(Constants.ROID_SIZE / 8)));
-            game.roids.push(newAsteroid(x, y, Math.ceil(Constants.ROID_SIZE / 8)));
+        } else if (size === 2) { // Medium -> Small
+            game.roids.push(newAsteroid(x, y, Math.ceil(r / 2), 1));
+            game.roids.push(newAsteroid(x, y, Math.ceil(r / 2), 1));
             game.score += Constants.ROID_PTS_MED;
         } else {
             game.score += Constants.ROID_PTS_SML;
@@ -206,7 +367,20 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
         game.roidsLeft--;
         game.sounds.music.setAsteroidRatio(game.roidsLeft / game.roidsTotal);
 
-        if (game.roids.length === 0) {
+        if (game.roids.length === 0 && game.enemies.length === 0) {
+            game.level++;
+            startNewLevel();
+        }
+    };
+
+    const destroyEnemy = (index) => {
+        const game = gameRef.current;
+        const enemy = game.enemies[index];
+        game.score += enemy.type === 'HEXAGON' ? 500 : 250;
+        game.enemies.splice(index, 1);
+        game.sounds.hit.play(!isMuted, gameStarted);
+
+        if (game.roids.length === 0 && game.enemies.length === 0) {
             game.level++;
             startNewLevel();
         }
@@ -234,9 +408,10 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
         ctx.strokeStyle = colour;
         ctx.lineWidth = Constants.SHIP_SIZE / 20;
         ctx.beginPath();
-        ctx.moveTo(x + 4 / 3 * r * Math.cos(a), y - 4 / 3 * r * Math.sin(a));
-        ctx.lineTo(x - r * (2 / 3 * Math.cos(a) + Math.sin(a)), y + r * (2 / 3 * Math.sin(a) - Math.cos(a)));
-        ctx.lineTo(x - r * (2 / 3 * Math.cos(a) - Math.sin(a)), y + r * (2 / 3 * Math.sin(a) + Math.cos(a)));
+
+        const design = SHIP_DESIGNS[shipType] || SHIP_DESIGNS.CLASSIC;
+        design.draw(ctx, x, y, a, r);
+
         ctx.closePath();
         ctx.stroke();
     };
@@ -258,9 +433,63 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, canv.width, canv.height);
 
+        // Draw Enemies
+        for (let i = 0; i < game.enemies.length; i++) {
+            const enemy = game.enemies[i];
+            const x = enemy.x, y = enemy.y, r = enemy.r, type = enemy.type;
+
+            ctx.lineWidth = Constants.SHIP_SIZE / 20;
+            if (type === 'SQUARE') {
+                ctx.strokeStyle = enemy.isElite ? "#a855f7" : "red"; // Purple for Elite
+                ctx.strokeRect(x - r, y - r, r * 2, r * 2);
+            } else {
+                ctx.strokeStyle = "lime";
+                ctx.beginPath();
+                for (let j = 0; j < 6; j++) {
+                    const ang = j * Math.PI / 3;
+                    ctx.lineTo(x + r * Math.cos(ang), y + r * Math.sin(ang));
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            // Health Bar for Hexagons and Elite Squares
+            if (enemy.maxHealth > 1) {
+                const barW = r * 2;
+                const barH = 5;
+                ctx.fillStyle = "rgba(128, 128, 128, 0.5)";
+                ctx.fillRect(x - r, y - r - 15, barW, barH);
+                ctx.fillStyle = type === 'HEXAGON' ? "lime" : "#a855f7";
+                ctx.fillRect(x - r, y - r - 15, barW * (enemy.health / enemy.maxHealth), barH);
+            }
+        }
+
+        // Enemy Lasers
+        for (let i = game.enemyLasers.length - 1; i >= 0; i--) {
+            const l = game.enemyLasers[i];
+            l.x += l.xv;
+            l.y += l.yv;
+            l.dist += Math.sqrt(l.xv * l.xv + l.yv * l.yv);
+
+            if (l.dist > canv.width) {
+                game.enemyLasers.splice(i, 1);
+                continue;
+            }
+
+            ctx.fillStyle = l.isElite ? "#a855f7" : "red";
+            ctx.beginPath(); ctx.arc(l.x, l.y, 3, 0, Math.PI * 2); ctx.fill();
+
+            // Collision with ship
+            if (!exploding && ship.blinkNum === 0 && !ship.dead && Constants.distBetweenPoints(ship.x, ship.y, l.x, l.y) < ship.r) {
+                explodeShip();
+                game.enemyLasers.splice(i, 1);
+            }
+        }
+
         // Draw Asteroids
         for (let i = 0; i < game.roids.length; i++) {
             ctx.strokeStyle = "slategrey";
+            ctx.fillStyle = "white"; // Filled with white as requested
             ctx.lineWidth = Constants.SHIP_SIZE / 20;
             const r = game.roids[i].r, x = game.roids[i].x, y = game.roids[i].y, a = game.roids[i].a, offs = game.roids[i].offs, vert = game.roids[i].vert;
             ctx.beginPath();
@@ -269,13 +498,46 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
                 ctx.lineTo(x + r * offs[j] * Math.cos(a + j * Math.PI * 2 / vert), y + r * offs[j] * Math.sin(a + j * Math.PI * 2 / vert));
             }
             ctx.closePath();
+            ctx.fill(); // Fill the asteroid
             ctx.stroke();
+        }
+
+        // Enemy Shooting & Movement
+        for (let i = 0; i < game.enemies.length; i++) {
+            const enemy = game.enemies[i];
+            enemy.x += enemy.xv;
+            enemy.y += enemy.yv;
+
+            // Edge wrap
+            if (enemy.x < -enemy.r) enemy.x = canv.width + enemy.r; else if (enemy.x > canv.width + enemy.r) enemy.x = -enemy.r;
+            if (enemy.y < -enemy.r) enemy.y = canv.height + enemy.r; else if (enemy.y > canv.height + enemy.r) enemy.y = -enemy.r;
+
+            if (enemy.type === 'SQUARE') {
+                enemy.shootTime--;
+                // Wraith Stealth Logic: Enemies don't target if stealth is active
+                const isWraithStealth = shipType === 'WRAITH' && ship.abilityActive;
+
+                if (enemy.shootTime <= 0 && !isWraithStealth) {
+                    // Aim at player: Elite is more precise (lower error)
+                    const error = enemy.isElite ? 0.15 : 0.4;
+                    const ang = Math.atan2(ship.y - enemy.y, ship.x - enemy.x) + (Math.random() * error - error / 2);
+                    game.enemyLasers.push({
+                        x: enemy.x,
+                        y: enemy.y,
+                        xv: Math.cos(ang) * Constants.LASER_SPD * 0.5 / Constants.FPS,
+                        yv: Math.sin(ang) * Constants.LASER_SPD * 0.5 / Constants.FPS,
+                        dist: 0,
+                        isElite: enemy.isElite
+                    });
+                    enemy.shootTime = Math.floor(Math.random() * 150) + 100;
+                }
+            }
         }
 
         // Ship Physics
         if (ship.thrusting && !ship.dead) {
-            ship.thrust.x += Constants.SHIP_THRUST * Math.cos(ship.a) / Constants.FPS;
-            ship.thrust.y -= Constants.SHIP_THRUST * Math.sin(ship.a) / Constants.FPS;
+            ship.thrust.x += ship.accel * Math.cos(ship.a) / Constants.FPS;
+            ship.thrust.y -= ship.accel * Math.sin(ship.a) / Constants.FPS;
             game.sounds.thrust.play(!isMuted, gameStarted);
             if (!exploding && blinkOn) {
                 ctx.strokeStyle = "red";
@@ -294,7 +556,23 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
         }
 
         if (!exploding) {
-            if (blinkOn && !ship.dead) drawShip(ctx, ship.x, ship.y, ship.a, ship.r);
+            if (blinkOn && !ship.dead) {
+                // Dim ship if stealth is active
+                if (shipType === 'WRAITH' && ship.abilityActive) ctx.globalAlpha = 0.3;
+                drawShip(ctx, ship.x, ship.y, ship.a, ship.r);
+                ctx.globalAlpha = 1.0;
+
+                // Draw Phalanx Shield
+                if (shipType === 'PHALANX' && ship.abilityActive) {
+                    ctx.strokeStyle = "cyan";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(ship.x, ship.y, ship.r * 1.8, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = "rgba(0, 255, 255, 0.1)";
+                    ctx.fill();
+                }
+            }
             if (ship.blinkNum > 0) {
                 ship.blinkTime--;
                 if (ship.blinkTime === 0) {
@@ -305,6 +583,14 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
             ship.a += ship.rot;
             ship.x += ship.thrust.x;
             ship.y += ship.thrust.y;
+
+            // Handle Stats/Ability Timers
+            if (ship.fireCooldown > 0) ship.fireCooldown--;
+            if (ship.abilityCooldown > 0) ship.abilityCooldown--;
+            if (ship.abilityActive) {
+                ship.abilityTimer--;
+                if (ship.abilityTimer <= 0) ship.abilityActive = false;
+            }
         } else {
             ctx.fillStyle = "darkred";
             ctx.beginPath(); ctx.arc(ship.x, ship.y, ship.r * 1.7, 0, Math.PI * 2); ctx.fill();
@@ -325,30 +611,65 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
             }
         }
 
-        // Screen Edges
+        // Draw Ability HUD
+        if (!ship.dead) {
+            const barW = 100;
+            const barH = 6;
+            const xHUD = 20;
+            const yHUD = 70;
+
+            // Background
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.fillRect(xHUD, yHUD, barW, barH);
+
+            // Fill
+            const cdPerc = ship.abilityCooldown > 0 ? (1 - ship.abilityCooldown / Math.ceil((ship.ability.cd / 1000) * Constants.FPS)) : 1;
+            ctx.fillStyle = ship.abilityCooldown > 0 ? "grey" : "gold";
+            ctx.fillRect(xHUD, yHUD, barW * cdPerc, barH);
+
+            ctx.fillStyle = "white";
+            ctx.font = "10px 'JetBrains Mono'";
+            ctx.fillText(ship.ability.name.toUpperCase(), xHUD, yHUD - 5);
+        }
+
+        // Screen Edges (Ship)
         if (ship.x < 0 - ship.r) ship.x = canv.width + ship.r; else if (ship.x > canv.width + ship.r) ship.x = 0 - ship.r;
         if (ship.y < 0 - ship.r) ship.y = canv.height + ship.r; else if (ship.y > canv.height + ship.r) ship.y = 0 - ship.r;
 
-        // Lasers
+        // Lasers (Ship)
         for (let i = ship.lasers.length - 1; i >= 0; i--) {
             if (ship.lasers[i].dist > Constants.LASER_DIST * canv.width) { ship.lasers.splice(i, 1); continue; }
-            if (ship.lasers[i].explodeTime > 0) {
-                ship.lasers[i].explodeTime--;
-                if (ship.lasers[i].explodeTime === 0) { ship.lasers.splice(i, 1); continue; }
+            const laser = ship.lasers[i];
+            if (laser.explodeTime > 0) {
+                laser.explodeTime--;
+                if (laser.explodeTime === 0) { ship.lasers.splice(i, 1); continue; }
                 ctx.fillStyle = "orangered";
-                ctx.beginPath(); ctx.arc(ship.lasers[i].x, ship.lasers[i].y, ship.r * 0.75, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(laser.x, laser.y, ship.r * 0.75, 0, Math.PI * 2); ctx.fill();
             } else {
-                ship.lasers[i].x += ship.lasers[i].xv;
-                ship.lasers[i].y += ship.lasers[i].yv;
-                ship.lasers[i].dist += Math.sqrt(Math.pow(ship.lasers[i].xv, 2) + Math.pow(ship.lasers[i].yv, 2));
+                laser.x += laser.xv;
+                laser.y += laser.yv;
+                laser.dist += Math.sqrt(laser.xv * laser.xv + laser.yv * laser.yv);
                 ctx.fillStyle = "salmon";
-                ctx.beginPath(); ctx.arc(ship.lasers[i].x, ship.lasers[i].y, Constants.SHIP_SIZE / 15, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(laser.x, laser.y, (Constants.SHIP_SIZE / 15) * ship.laserSize, 0, Math.PI * 2); ctx.fill();
+
+                // Check hit on enemies
+                for (let j = game.enemies.length - 1; j >= 0; j--) {
+                    const enemy = game.enemies[j];
+                    if (Constants.distBetweenPoints(laser.x, laser.y, enemy.x, enemy.y) < enemy.r) {
+                        enemy.health--;
+                        laser.explodeTime = Math.ceil(Constants.LASER_EXPLODE_DUR * Constants.FPS);
+                        if (enemy.health <= 0) {
+                            destroyEnemy(j);
+                        }
+                        break;
+                    }
+                }
             }
-            if (ship.lasers[i].x < 0) ship.lasers[i].x = canv.width; else if (ship.lasers[i].x > canv.width) ship.lasers[i].x = 0;
-            if (ship.lasers[i].y < 0) ship.lasers[i].y = canv.height; else if (ship.lasers[i].y > canv.height) ship.lasers[i].y = 0;
+            if (laser && laser.x < 0) laser.x = canv.width; else if (laser && laser.x > canv.width) laser.x = 0;
+            if (laser && laser.y < 0) laser.y = canv.height; else if (laser && laser.y > canv.height) laser.y = 0;
         }
 
-        // Collisions
+        // Collisions (Asteroids)
         for (let i = game.roids.length - 1; i >= 0; i--) {
             const roid = game.roids[i];
             if (!roid) continue;
@@ -364,8 +685,31 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
             }
 
             if (!asteroidHit && !exploding && ship.blinkNum === 0 && !ship.dead && Constants.distBetweenPoints(ship.x, ship.y, roid.x, roid.y) < ship.r + roid.r) {
-                explodeShip();
-                destroyAsteroid(i);
+                const isShielded = shipType === 'PHALANX' && ship.abilityActive;
+                if (!isShielded) {
+                    explodeShip();
+                    destroyAsteroid(i);
+                } else {
+                    // Just destroy/push the asteroid if shielded?
+                    // Let's destroy it but not explode ship
+                    destroyAsteroid(i);
+                }
+            }
+        }
+
+        // Collisions (Enemies vs Ship)
+        if (!exploding && ship.blinkNum === 0 && !ship.dead) {
+            const isShielded = shipType === 'PHALANX' && ship.abilityActive;
+            for (let i = game.enemies.length - 1; i >= 0; i--) {
+                const enemy = game.enemies[i];
+                if (Constants.distBetweenPoints(ship.x, ship.y, enemy.x, enemy.y) < ship.r + enemy.r) {
+                    if (!isShielded) {
+                        explodeShip();
+                        destroyEnemy(i);
+                    } else {
+                        destroyEnemy(i);
+                    }
+                }
             }
         }
 
@@ -385,9 +729,11 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver }
             game.textAlpha -= (1.0 / Constants.TEXT_FADE_TIME / Constants.FPS);
         }
 
-        for (let i = 0; i < game.lives; i++) drawShip(ctx, Constants.SHIP_SIZE + i * Constants.SHIP_SIZE * 1.2, Constants.SHIP_SIZE, 0.5 * Math.PI, ship.r, (exploding && i === game.lives - 1 ? "red" : "white"));
-        ctx.textAlign = "right"; ctx.fillStyle = "white"; ctx.font = Constants.TEXT_SIZE + "px dejavu sans mono";
-        ctx.fillText(game.score, canv.width - Constants.SHIP_SIZE / 2, Constants.SHIP_SIZE);
+        const uiScale = getScale();
+        const shipSize = Constants.SHIP_SIZE * uiScale;
+        for (let i = 0; i < game.lives; i++) drawShip(ctx, shipSize + i * shipSize * 1.2, shipSize, 0.5 * Math.PI, ship.r, (exploding && i === game.lives - 1 ? "red" : "white"));
+        ctx.textAlign = "right"; ctx.fillStyle = "white"; ctx.font = (Constants.TEXT_SIZE * uiScale) + "px dejavu sans mono";
+        ctx.fillText(game.score, canv.width - shipSize / 2, shipSize);
     };
 
     return (

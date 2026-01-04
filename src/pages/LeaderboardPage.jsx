@@ -12,7 +12,7 @@ const LeaderboardPage = ({ entries, isVerified }) => {
                     <button className="back-btn" onClick={() => navigate('/')}>
                         <ChevronLeft size={24} /> BACK
                     </button>
-                    <h2>TOP 50 COMMANDERS</h2>
+                    <h2>TOP 20 COMMANDERS</h2>
                 </div>
 
                 <div id="leaderboard-list">

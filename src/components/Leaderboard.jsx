@@ -7,22 +7,26 @@ const Leaderboard = ({ entries, onClose }) => {
             <div id="close-leaderboard" onClick={onClose}>
                 <X size={24} />
             </div>
-            <h2>TOP 50 COMMANDERS</h2>
+            <h2>TOP 20 COMMANDERS</h2>
             <div id="leaderboard-list">
-                {entries.length === 0 ? "NO DATA" : entries.map((entry, idx) => (
-                    <div key={idx} className="leaderboard-entry">
-                        <span className="rank-num">#{idx + 1}</span>
-                        <span className="rank-name">
-                            {entry.name}
-                            {entry.verified && (
-                                <div className="verified-badge" title="Verified User">
-                                    <CheckCircle2 size={12} />
-                                </div>
-                            )}
-                        </span>
-                        <span className="rank-score">{entry.score}</span>
-                    </div>
-                ))}
+                {(!entries || entries.length === 0) ? (
+                    <div className="no-data">NO FLIGHT DATA FOUND</div>
+                ) : (
+                    entries.slice(0, 20).map((entry, idx) => (
+                        <div key={idx} className="leaderboard-entry">
+                            <span className="rank-num">#{idx + 1}</span>
+                            <span className="rank-name">
+                                {entry.name}
+                                {entry.verified && (
+                                    <div className="verified-badge-mini" title="Verified Pilot">
+                                        <CheckCircle2 size={12} fill="gold" color="black" />
+                                    </div>
+                                )}
+                            </span>
+                            <span className="rank-score">{entry.score.toLocaleString()}</span>
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );
