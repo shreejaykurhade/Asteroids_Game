@@ -11,17 +11,15 @@ export const getPersonalBest = () => {
     return parseInt(localStorage.getItem(PB_KEY)) || 0;
 };
 
-export const saveToLeaderboard = (name, score, isVerified) => {
+export const saveToLeaderboard = (name, score) => {
     let leaderboard = getLeaderboard();
     let isNewPB = false;
 
-    // Handle Personal Best for verified players
-    if (isVerified) {
-        const currentPB = getPersonalBest();
-        if (score > currentPB) {
-            localStorage.setItem(PB_KEY, score.toString());
-            isNewPB = true;
-        }
+    // Handle Personal Best
+    const currentPB = getPersonalBest();
+    if (score > currentPB) {
+        localStorage.setItem(PB_KEY, score.toString());
+        isNewPB = true;
     }
 
     // Check if user already exists in leaderboard
@@ -31,14 +29,12 @@ export const saveToLeaderboard = (name, score, isVerified) => {
         // If user exists, only update if new score is higher
         if (parseInt(score) > leaderboard[existingIndex].score) {
             leaderboard[existingIndex].score = parseInt(score);
-            leaderboard[existingIndex].verified = isVerified;
             leaderboard[existingIndex].timestamp = Date.now();
         }
     } else {
         leaderboard.push({
             name,
             score: parseInt(score),
-            verified: isVerified,
             timestamp: Date.now()
         });
     }

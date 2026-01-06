@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2 } from 'lucide-react';
 
-const LeaderboardPage = ({ entries, isVerified }) => {
+const LeaderboardPage = ({ entries }) => {
     const navigate = useNavigate();
 
     return (

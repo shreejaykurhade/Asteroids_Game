@@ -8,7 +8,6 @@ import PilotGuidePage from './pages/PilotGuidePage';
 import GameCanvas from './components/GameCanvas';
 import MobileControls from './components/MobileControls';
 
-import { getLeaderboard, saveToLeaderboard } from './utils/leaderboard';
 import confetti from 'canvas-confetti';
 import './styles/App.css';
 
@@ -16,7 +15,7 @@ const AppContent = () => {
     const [gameStarted, setGameStarted] = useState(false);
     const [playerName, setPlayerName] = useState(localStorage.getItem('ASTER_PLAYER_NAME') || "");
     const [isMuted, setIsMuted] = useState(false);
-    const [leaderboard, setLeaderboard] = useState(getLeaderboard());
+    const [leaderboard, setLeaderboard] = useState([]);
     const [showNotification, setShowNotification] = useState(false);
     const [notificationMsg, setNotificationMsg] = useState("");
     const [selectedShip, setSelectedShip] = useState(localStorage.getItem('ASTER_SELECTED_SHIP') || "CLASSIC");
@@ -24,9 +23,29 @@ const AppContent = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Initialize local leaderboard
+    // Fetch leaderboard from API (or fallback to localStorage for local dev)
+    const fetchLeaderboard = async () => {
+        try {
+            const response = await fetch('/api/leaderboard');
+            if (response.ok) {
+                const data = await response.json();
+                setLeaderboard(data);
+                return;
+            }
+        } catch (error) {
+            console.log('API not available (local dev), using localStorage fallback');
+        }
+
+        // Fallback to localStorage for local development
+        const localData = localStorage.getItem('ASTER_LEADERBOARD');
+        if (localData) {
+            setLeaderboard(JSON.parse(localData));
+        }
+    };
+
+    // Initialize leaderboard on mount
     useEffect(() => {
-        setLeaderboard(getLeaderboard());
+        fetchLeaderboard();
     }, []);
 
     const handleStartGame = (name) => {
@@ -35,12 +54,61 @@ const AppContent = () => {
         setGameStarted(true);
     };
 
-    const handleGameOver = (finalScore) => {
-        // Local Save & Notification logic
-        const { leaderboard: newList, isNewPB } = saveToLeaderboard(playerName, finalScore, false); // isVerified false
-        setLeaderboard(newList);
+    const handleGameOver = async (finalScore) => {
+        let updatedLeaderboard = [...leaderboard];
+        let isTopScore = false;
 
-        if (isNewPB) {
+        try {
+            // Try to save score to API
+            const response = await fetch('/api/leaderboard', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: playerName,
+                    score: finalScore
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                updatedLeaderboard = result.leaderboard;
+                setLeaderboard(updatedLeaderboard);
+
+                // Check if this is a new personal best (top 20)
+                const playerEntry = result.leaderboard.find(e => e.name === playerName);
+                isTopScore = playerEntry && playerEntry.score === finalScore;
+            }
+        } catch (error) {
+            console.log('API not available, using localStorage');
+
+            // Fallback to localStorage for local development
+            const existingIndex = updatedLeaderboard.findIndex(e => e.name === playerName);
+
+            if (existingIndex !== -1) {
+                if (finalScore > updatedLeaderboard[existingIndex].score) {
+                    updatedLeaderboard[existingIndex].score = finalScore;
+                    updatedLeaderboard[existingIndex].timestamp = Date.now();
+                    isTopScore = true;
+                }
+            } else {
+                updatedLeaderboard.push({
+                    name: playerName,
+                    score: finalScore,
+                    timestamp: Date.now()
+                });
+                isTopScore = true;
+            }
+
+            updatedLeaderboard.sort((a, b) => b.score - a.score);
+            updatedLeaderboard = updatedLeaderboard.slice(0, 20);
+
+            localStorage.setItem('ASTER_LEADERBOARD', JSON.stringify(updatedLeaderboard));
+            setLeaderboard(updatedLeaderboard);
+        }
+
+        if (isTopScore) {
             setNotificationMsg(`NEW RECORD! PILOT ${playerName} REACHED ${finalScore}!`);
             setShowNotification(true);
 
@@ -75,7 +143,6 @@ const AppContent = () => {
                     showLeaderboardBtn={!isLeaderboardPage}
                     showHangarBtn={!isHangarPage}
                     showGuideBtn={!isGuidePage}
-                    isVerified={false}
                     onLogout={() => { }}
                 />
             )}
@@ -86,15 +153,12 @@ const AppContent = () => {
                         <Home
                             onStart={handleStartGame}
                             leaderboard={leaderboard.slice(0, 5)}
-                            isVerified={false}
                             playerName={playerName}
-                            onVerified={() => { }}
-                            onLogout={() => { }}
                         />
                     ) : null
                 } />
                 <Route path="/leaderboard" element={
-                    <LeaderboardPage entries={leaderboard} isVerified={true} />
+                    <LeaderboardPage entries={leaderboard} />
                 } />
                 <Route path="/hangar" element={
                     <ShipSelectionPage
@@ -111,7 +175,6 @@ const AppContent = () => {
             <GameCanvas
                 gameStarted={gameStarted}
                 playerName={playerName}
-                isVerified={isVerified}
                 isMuted={isMuted}
                 onGameOver={handleGameOver}
                 shipType={selectedShip}

@@ -191,101 +191,7 @@ input[type="text"]:focus {
 }
 
 
-/* Verified Dashboard Status */
-.verified-status {
-    position: relative;
-    border: none !important;
-    background: black;
-    z-index: 1;
-}
 
-.verified-status::before {
-    content: '';
-    position: absolute;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
-    background: conic-gradient(from 0deg,
-            #ffffff,
-            #fff9c4,
-            #ffd600,
-            #ffffff,
-            #fff9c4,
-            #ffd600,
-            #ffffff);
-    z-index: -1;
-    animation: rotateBorder 4s linear infinite;
-}
-
-.verified-status::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: black;
-    z-index: -1;
-}
-
-/* Verified Dashboard Status with Rotating Border */
-.verified-status {
-    position: relative;
-    border: none !important;
-    background: black;
-    z-index: 1;
-    overflow: hidden;
-    /* Clips the rotating pseudo-element */
-}
-
-.verified-status::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(from 0deg,
-            #ffffff,
-            #fff9c4,
-            #ffd600,
-            #ffffff,
-            #fff9c4,
-            #ffd600,
-            #ffffff);
-    z-index: -2;
-    animation: rotateBorder 3s linear infinite;
-}
-
-.verified-status::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    /* Precise border thickness */
-    left: 3px;
-    right: 3px;
-    bottom: 3px;
-    background: black;
-    z-index: -1;
-    border-radius: 8px;
-}
-
-@keyframes rotateBorder {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.verified-status input[type="text"] {
-    color: #fff9c4 !important;
-    border-color: rgba(255, 214, 0, 0.4);
-    box-shadow: 0 0 10px rgba(255, 214, 0, 0.1);
-}
 
 @keyframes shake {
 
@@ -563,45 +469,7 @@ button:hover {
     color: yellow;
 }
 
-/* Verified Badge */
-.verified-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: 8px;
-    position: relative;
-    cursor: help;
-    vertical-align: middle;
-    color: #4ade80;
-    z-index: 500;
-    /* Ensure it stays above row items */
-}
 
-.verified-badge::after {
-    content: "Verified User";
-    position: absolute;
-    bottom: 125%;
-    /* Slightly more space */
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    color: black;
-    padding: 6px 10px;
-    font-size: 0.75rem;
-    border-radius: 6px;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-    z-index: 1000;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    border: 1px solid gold;
-}
-
-.verified-badge:hover::after {
-    opacity: 1;
-    visibility: visible;
-}
 
 footer {
     position: fixed;
@@ -789,14 +657,7 @@ footer {
     }
 }
 
-.verified-badge-mini {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: 8px;
-    vertical-align: middle;
-    filter: drop-shadow(0 0 3px gold);
-}
+
 
 .no-data {
     text-align: center;

@@ -1,6 +1,18 @@
-import { kv } from '@vercel/kv';
+import { createClient } from 'redis';
 
 const LEADERBOARD_KEY = 'asteroid_leaderboard';
+
+let redis = null;
+
+async function getRedisClient() {
+    if (!redis) {
+        redis = createClient({
+            url: process.env.REDIS_URL || 'redis://localhost:6379'
+        });
+        await redis.connect();
+    }
+    return redis;
+}
 
 export default async function handler(req, res) {
     // Enable CORS
@@ -13,9 +25,12 @@ export default async function handler(req, res) {
     }
 
     try {
+        const client = await getRedisClient();
+
         if (req.method === 'GET') {
             // Fetch leaderboard
-            const leaderboard = await kv.get(LEADERBOARD_KEY) || [];
+            const data = await client.get(LEADERBOARD_KEY);
+            const leaderboard = data ? JSON.parse(data) : [];
             return res.status(200).json(leaderboard);
         }
 
@@ -28,7 +43,8 @@ export default async function handler(req, res) {
             }
 
             // Get current leaderboard
-            let leaderboard = await kv.get(LEADERBOARD_KEY) || [];
+            const data = await client.get(LEADERBOARD_KEY);
+            let leaderboard = data ? JSON.parse(data) : [];
 
             // Check if user already exists
             const existingIndex = leaderboard.findIndex(entry => entry.name === name);
@@ -52,8 +68,8 @@ export default async function handler(req, res) {
             leaderboard.sort((a, b) => b.score - a.score);
             leaderboard = leaderboard.slice(0, 20);
 
-            // Save back to KV
-            await kv.set(LEADERBOARD_KEY, leaderboard);
+            // Save back to Redis
+            await client.set(LEADERBOARD_KEY, JSON.stringify(leaderboard));
 
             return res.status(200).json({ success: true, leaderboard });
         }

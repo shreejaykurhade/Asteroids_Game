@@ -17,11 +17,6 @@ const Leaderboard = ({ entries, onClose }) => {
                             <span className="rank-num">#{idx + 1}</span>
                             <span className="rank-name">
                                 {entry.name}
-                                {entry.verified && (
-                                    <div className="verified-badge-mini" title="Verified Pilot">
-                                        <CheckCircle2 size={12} fill="gold" color="black" />
-                                    </div>
-                                )}
                             </span>
                             <span className="rank-score">{entry.score.toLocaleString()}</span>
                         </div>

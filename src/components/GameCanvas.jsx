@@ -5,7 +5,7 @@ import { saveToLeaderboard } from '../utils/leaderboard';
 import { SHIP_DESIGNS } from '../utils/shipDesigns';
 import { ENEMY_DESIGNS } from '../utils/enemyDesigns';
 
-const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, shipType }) => {
+const GameCanvas = ({ gameStarted, playerName, isMuted, onGameOver, shipType }) => {
     const canvasRef = useRef(null);
     const gameRef = useRef({
         level: 0,
@@ -464,7 +464,8 @@ const GameCanvas = ({ gameStarted, playerName, isVerified, isMuted, onGameOver, 
         game.ship.dead = true;
         game.text = "Game Over";
         game.textAlpha = 1.0;
-        saveToLeaderboard(playerName, game.score, isVerified);
+        // Local leaderboard save removed as it's handled by onGameOver in App.jsx
+        // saveToLeaderboard(playerName, game.score);
 
         setTimeout(() => {
             onGameOver(game.score);

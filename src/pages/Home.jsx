@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 
-const Home = ({ onStart, leaderboard, isVerified, playerName, onVerified }) => {
+const Home = ({ onStart, leaderboard, playerName }) => {
     const [inputValue, setInputValue] = useState(playerName);
     const [errorVisible, setErrorVisible] = useState(false);
     const navigate = useNavigate();
@@ -23,7 +23,7 @@ const Home = ({ onStart, leaderboard, isVerified, playerName, onVerified }) => {
 
     return (
         <div className="main-container">
-            <div className={`retro-container ${isVerified ? "verified-status" : ""}`}>
+            <div className="retro-container">
                 <h1>ASTEROIDS</h1>
 
                 <div className="home-actions">

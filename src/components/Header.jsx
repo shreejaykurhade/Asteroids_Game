@@ -11,9 +11,7 @@ const Header = ({
     onGuideToggle,
     showLeaderboardBtn = true,
     showHangarBtn = true,
-    showGuideBtn = true,
-    isVerified,
-    onLogout
+    showGuideBtn = true
 }) => {
     const navigate = useNavigate();
 
@@ -58,12 +56,6 @@ const Header = ({
                 >
                     {isMuted ? <SpeakerOffIcon width={20} height={20} /> : <SpeakerLoudIcon width={20} height={20} />}
                 </div>
-
-                {isVerified && (
-                    <button className="nav-logout-btn" onClick={onLogout}>
-                        LOGOUT
-                    </button>
-                )}
             </div>
         </nav>
     );
