@@ -186,7 +186,6 @@ const AppContent = () => {
 
             {showNotification && (
                 <div className="record-notification">
-                    <div className="record-glow"></div>
                     <div className="record-content">
                         <h2>🏆 RECORD BROKEN 🏆</h2>
                         <p>{notificationMsg}</p>
