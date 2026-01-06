@@ -24,12 +24,24 @@ export const saveToLeaderboard = (name, score, isVerified) => {
         }
     }
 
-    leaderboard.push({
-        name,
-        score: parseInt(score),
-        verified: isVerified,
-        timestamp: Date.now()
-    });
+    // Check if user already exists in leaderboard
+    const existingIndex = leaderboard.findIndex(entry => entry.name === name);
+
+    if (existingIndex !== -1) {
+        // If user exists, only update if new score is higher
+        if (parseInt(score) > leaderboard[existingIndex].score) {
+            leaderboard[existingIndex].score = parseInt(score);
+            leaderboard[existingIndex].verified = isVerified;
+            leaderboard[existingIndex].timestamp = Date.now();
+        }
+    } else {
+        leaderboard.push({
+            name,
+            score: parseInt(score),
+            verified: isVerified,
+            timestamp: Date.now()
+        });
+    }
 
     leaderboard.sort((a, b) => b.score - a.score);
     leaderboard = leaderboard.slice(0, 20); // Top 20 only
