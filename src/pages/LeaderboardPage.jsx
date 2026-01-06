@@ -16,27 +16,15 @@ const LeaderboardPage = ({ entries, isVerified }) => {
                 </div>
 
                 <div id="leaderboard-list">
-                    {!isVerified ? (
-                        <div className="auth-gate-full">
-                            <p>IDENTIFICATION REQUIRED</p>
-                            <p className="sub-gate">SIGN IN TO ACCESS COMMAND RECORDS</p>
+                    {entries.length === 0 ? "NO DATA" : entries.map((entry, idx) => (
+                        <div key={idx} className="leaderboard-entry">
+                            <span className="rank-num">#{idx + 1}</span>
+                            <span className="rank-name">
+                                {entry.name}
+                            </span>
+                            <span className="rank-score">{entry.score}</span>
                         </div>
-                    ) : (
-                        entries.length === 0 ? "NO DATA" : entries.map((entry, idx) => (
-                            <div key={idx} className="leaderboard-entry">
-                                <span className="rank-num">#{idx + 1}</span>
-                                <span className="rank-name">
-                                    {entry.name}
-                                    {entry.verified && (
-                                        <div className="verified-badge">
-                                            <CheckCircle2 size={12} />
-                                        </div>
-                                    )}
-                                </span>
-                                <span className="rank-score">{entry.score}</span>
-                            </div>
-                        ))
-                    )}
+                    ))}
                 </div>
             </div>
         </div>

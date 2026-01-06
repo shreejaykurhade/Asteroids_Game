@@ -32,10 +32,10 @@ const Home = ({ onStart, leaderboard, isVerified, playerName, onVerified }) => {
                             type="text"
                             id="username"
                             value={inputValue}
-                            onChange={(e) => !isVerified && setInputValue(e.target.value)}
-                            disabled={isVerified}
-                            placeholder={errorVisible ? "NAME REQUIRED" : (isVerified ? "VERIFIED" : "ENTER NAME")}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder={errorVisible ? "NAME REQUIRED" : "ENTER NAME"}
                             className={errorVisible ? "error" : ""}
+                            autoComplete="off"
                             onKeyPress={(e) => e.key === 'Enter' && handleStart()}
                         />
                     </div>
@@ -45,44 +45,21 @@ const Home = ({ onStart, leaderboard, isVerified, playerName, onVerified }) => {
                 </div>
 
                 <div id="mini-leaderboard">
-                    {!isVerified ? (
-                        <div className="auth-gate-msg">SIGN IN TO SAVE PROGRESS</div>
-                    ) : (
-                        <>
-                            <div className="mini-header">
-                                <h3>TOP 5 SPACERS</h3>
-                            </div>
-                            <div id="mini-leaderboard-list">
-                                {leaderboard.length === 0 ? "NO DATA" : leaderboard.map((entry, idx) => (
-                                    <div key={idx} className="mini-entry">
-                                        <span className="rank-num">#{idx + 1}</span>
-                                        <span className="rank-name">
-                                            {entry.name}
-                                            {entry.verified && (
-                                                <div className="verified-badge">
-                                                    <CheckCircle2 size={12} />
-                                                </div>
-                                            )}
-                                        </span>
-                                        <span className="rank-score">{entry.score}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-                {!isVerified && (
-                    <div className="google-auth-retro">
-                        <button
-                            className="google-btn"
-                            onClick={onVerified} // Triggers Firebase Auth passed from App
-                        >
-                            <span className="g-icon">G</span>
-                            SIGN IN WITH GOOGLE
-                        </button>
-                        <div className="auth-note">SECURE LOGIN VIA FIREBASE</div>
+                    <div className="mini-header">
+                        <h3>TOP 5 SPACERS</h3>
                     </div>
-                )}
+                    <div id="mini-leaderboard-list">
+                        {leaderboard.length === 0 ? "NO DATA" : leaderboard.map((entry, idx) => (
+                            <div key={idx} className="mini-entry">
+                                <span className="rank-num">#{idx + 1}</span>
+                                <span className="rank-name">
+                                    {entry.name}
+                                </span>
+                                <span className="rank-score">{entry.score}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );

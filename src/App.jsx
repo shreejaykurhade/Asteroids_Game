@@ -8,103 +8,55 @@ import PilotGuidePage from './pages/PilotGuidePage';
 import GameCanvas from './components/GameCanvas';
 import MobileControls from './components/MobileControls';
 
-import { loginWithGoogle, logoutUser, saveScoreToFirebase, trackSessionTime, auth, fetchLeaderboard } from './utils/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { getLeaderboard, saveToLeaderboard } from './utils/leaderboard';
 import confetti from 'canvas-confetti';
 import './styles/App.css';
 
 const AppContent = () => {
     const [gameStarted, setGameStarted] = useState(false);
     const [playerName, setPlayerName] = useState(localStorage.getItem('ASTER_PLAYER_NAME') || "");
-    const [isVerified, setIsVerified] = useState(localStorage.getItem('ASTER_VERIFIED') === 'true');
     const [isMuted, setIsMuted] = useState(false);
-    const [leaderboard, setLeaderboard] = useState([]);
+    const [leaderboard, setLeaderboard] = useState(getLeaderboard());
     const [showNotification, setShowNotification] = useState(false);
     const [notificationMsg, setNotificationMsg] = useState("");
-    const [sessionStartTime, setSessionStartTime] = useState(null);
     const [selectedShip, setSelectedShip] = useState(localStorage.getItem('ASTER_SELECTED_SHIP') || "CLASSIC");
 
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Initialize leaderboard from Firebase
+    // Initialize local leaderboard
     useEffect(() => {
-        const loadLeaderboard = async () => {
-            const data = await fetchLeaderboard();
-            setLeaderboard(data);
-        };
-        loadLeaderboard();
-    }, [gameStarted]); // Refresh when game ends/starts
-
-    useEffect(() => {
-        // Firebase Auth Listener
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                setPlayerName(user.displayName.toUpperCase());
-                setIsVerified(true);
-                localStorage.setItem('ASTER_PLAYER_NAME', user.displayName.toUpperCase());
-                localStorage.setItem('ASTER_VERIFIED', 'true');
-            } else {
-                // Handle logout state if needed
-            }
-        });
-
-        // Session Tracking
-        const startTime = Date.now();
-        const handleUnload = () => {
-            if (auth.currentUser) {
-                const duration = Date.now() - startTime;
-                trackSessionTime(auth.currentUser.uid, duration);
-            }
-        };
-        window.addEventListener('beforeunload', handleUnload);
-
-        return () => {
-            unsubscribe();
-            handleUnload(); // Save session on component unmount
-            window.removeEventListener('beforeunload', handleUnload);
-        };
+        setLeaderboard(getLeaderboard());
     }, []);
-
-    const triggerLogin = async () => {
-        try {
-            await loginWithGoogle();
-        } catch (e) {
-            console.error(e);
-        }
-    };
 
     const handleStartGame = (name) => {
         setPlayerName(name.toUpperCase());
-        setSessionStartTime(Date.now());
+        localStorage.setItem('ASTER_PLAYER_NAME', name.toUpperCase());
         setGameStarted(true);
     };
 
-    const handleGameOver = async (finalScore) => {
-        // Firebase Save
-        if (auth.currentUser && isVerified) {
-            await saveScoreToFirebase(auth.currentUser, finalScore, isVerified);
+    const handleGameOver = (finalScore) => {
+        // Local Save & Notification logic
+        const { leaderboard: newList, isNewPB } = saveToLeaderboard(playerName, finalScore, false); // isVerified false
+        setLeaderboard(newList);
 
-            // Refresh Leaderboard
-            const newList = await fetchLeaderboard();
-            setLeaderboard(newList);
+        if (isNewPB) {
+            setNotificationMsg(`NEW RECORD! PILOT ${playerName} REACHED ${finalScore}!`);
+            setShowNotification(true);
 
-            // Check if record broken (simple check against top #1)
-            // Or personalized per original code... 
-            // Since we moved to server-side only, "New PB" notifications are tricky without reading DB.
-            // But we can check if we are in the new list!
+            // Celebration!
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#ffd700', '#ffffff', '#ff4500']
+            });
+
+            setTimeout(() => setShowNotification(false), 5000);
         }
 
         setGameStarted(false);
         navigate('/');
-    };
-
-    const handleLogout = () => {
-        logoutUser();
-        localStorage.removeItem('ASTER_PLAYER_NAME');
-        localStorage.setItem('ASTER_VERIFIED', 'false');
-        localStorage.removeItem('ASTER_PLAYER_PB');
-        window.location.reload();
     };
 
     const isLeaderboardPage = location.pathname === '/leaderboard';
@@ -123,8 +75,8 @@ const AppContent = () => {
                     showLeaderboardBtn={!isLeaderboardPage}
                     showHangarBtn={!isHangarPage}
                     showGuideBtn={!isGuidePage}
-                    isVerified={isVerified}
-                    onLogout={handleLogout}
+                    isVerified={false}
+                    onLogout={() => { }}
                 />
             )}
 
@@ -134,15 +86,15 @@ const AppContent = () => {
                         <Home
                             onStart={handleStartGame}
                             leaderboard={leaderboard.slice(0, 5)}
-                            isVerified={isVerified}
+                            isVerified={false}
                             playerName={playerName}
-                            onVerified={triggerLogin}
-                            onLogout={handleLogout}
+                            onVerified={() => { }}
+                            onLogout={() => { }}
                         />
                     ) : null
                 } />
                 <Route path="/leaderboard" element={
-                    <LeaderboardPage entries={leaderboard} isVerified={isVerified} />
+                    <LeaderboardPage entries={leaderboard} isVerified={true} />
                 } />
                 <Route path="/hangar" element={
                     <ShipSelectionPage
